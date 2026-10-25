@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TEST YOUR ENGINEERING BRAIN 🧠 | MGR IEI Students Chapter</title>
+  <meta name="description" content="Interactive Engineering Quiz Game with Automatic E-Certificate Generation organized by MGR IEI Students Chapter, Dr. M.G.R. Educational and Research Institute.">
+  <link rel="icon" type="image/png" href="/assets/logos/iei-emblem.png">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="theme-navy">
+
+  <!-- Background Animated Circuit & Glow Canvas -->
+  <canvas id="circuitCanvas" class="circuit-bg"></canvas>
+
+  <!-- Top Institutional Header -->
+  <header class="app-header">
+    <div class="header-inner container">
+      <div class="brand-group">
+        <img src="/assets/logos/mgr-crest.png" alt="Dr. M.G.R. University Crest" class="brand-logo crest-logo" onerror="this.style.display='none'">
+        <div class="brand-text">
+          <div class="university-name">Dr. M.G.R.</div>
+          <div class="university-sub">EDUCATIONAL AND RESEARCH INSTITUTE</div>
+          <div class="university-tagline"><span class="badge-pill">University with Graded Autonomy Status</span> <span class="badge-naac">NAAC A+</span></div>
+          <div class="chapter-title">MGR IEI STUDENTS CHAPTER</div>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <img src="/assets/logos/iei-emblem.png" alt="The Institution of Engineers (India) Emblem" class="brand-logo iei-logo" onerror="this.style.display='none'">
+        <button id="adminPortalBtn" class="btn btn-outline-gold btn-sm">
+          <span class="icon">🔒</span> Admin Portal
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main View Container -->
+  <main class="main-content container">
+
+    <!-- ========================================================
+         VIEW 1: LANDING & REGISTRATION
+         ======================================================== -->
+    <section id="viewLanding" class="view-section active">
+      <div class="hero-grid">
+        <div class="hero-text-col">
+          <div class="event-badge">
+            <span class="pulse-dot"></span> COLLEGE TECHNICAL FEST 2026 • ANNUAL QUIZ CHALLENGE
+          </div>
+          <h1 class="hero-title">
+            TEST YOUR <br>
+            <span class="gradient-text">ENGINEERING BRAIN</span> 🧠
+          </h1>
+          <p class="hero-subtitle">
+            "Challenge Your Knowledge. Test Your Skills. Earn Your Certificate!"
+          </p>
+          <p class="hero-desc">
+            10 Questions. One Engineering Mind. How Far Can You Go? Test your problem-solving prowess across Computer Science, Electrical, Mechanical, Civil, AI, and Core Engineering. Instant score validation and an official verified E-Certificate delivered straight to your email.
+          </p>
+
+          <div class="fest-perks-grid">
+            <div class="perk-card">
+              <div class="perk-icon">⚡</div>
+              <div class="perk-info">
+                <h4>10 Core MCQs</h4>
+                <p>1 Mark Each • 10 Marks Max</p>
+              </div>
+            </div>
+            <div class="perk-card">
+              <div class="perk-icon">📜</div>
+              <div class="perk-info">
+                <h4>Verified E-Certificate</h4>
+                <p>Landscape PDF with Unique ID</p>
+              </div>
+            </div>
+            <div class="perk-card">
+              <div class="perk-icon">📧</div>
+              <div class="perk-info">
+                <h4>Automatic Delivery</h4>
+                <p>Instant PDF Sent to Your Email</p>
+              </div>
+            </div>
+            <div class="perk-card">
+              <div class="perk-icon">🏆</div>
+              <div class="perk-info">
+                <h4>Official Recognition</h4>
+                <p>MGR IEI Students Chapter</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Registration Form Card -->
+        <div class="hero-form-col">
+          <div class="glass-card registration-card">
+            <div class="card-glow-edge"></div>
+            <div class="form-header">
+              <h2 class="form-title">Participant Registration</h2>
+              <p class="form-subtitle">Enter your details to initiate your quiz challenge session.</p>
+            </div>
+
+            <form id="registrationForm" novalidate>
+              <div class="form-group">
+                <label for="fullName">Full Name <span class="required">*</span></label>
+                <div class="input-wrapper">
+                  <span class="input-icon">👤</span>
+                  <input type="text" id="fullName" name="fullName" placeholder="e.g. Aarav Sharma" required autocomplete="name" minlength="2">
+                </div>
+                <div class="field-error" id="nameError"></div>
+              </div>
+
+              <div class="form-group">
+                <label for="email">College / Personal Email <span class="required">*</span></label>
+                <div class="input-wrapper">
+                  <span class="input-icon">✉️</span>
+                  <input type="email" id="email" name="email" placeholder="e.g. aarav.sharma@gmail.com" required autocomplete="email">
+                </div>
+                <small class="input-hint">Your official E-Certificate will be delivered to this address.</small>
+                <div class="field-error" id="emailError"></div>
+              </div>
+
+              <div class="form-group">
+                <label for="branch">Engineering Branch <span class="required">*</span></label>
+                <div class="input-wrapper">
+                  <span class="input-icon">🎓</span>
+                  <select id="branch" name="branch" required>
+                    <option value="" disabled selected>-- Select Your Engineering Branch --</option>
+                    <option value="Computer Science and Engineering (CSE)">Computer Science and Engineering (CSE)</option>
+                    <option value="Information Technology (IT)">Information Technology (IT)</option>
+                    <option value="Artificial Intelligence and Data Science (AI & DS)">Artificial Intelligence and Data Science (AI & DS)</option>
+                    <option value="Artificial Intelligence and Machine Learning (AI & ML)">Artificial Intelligence and Machine Learning (AI & ML)</option>
+                    <option value="Electronics and Communication Engineering (ECE)">Electronics and Communication Engineering (ECE)</option>
+                    <option value="Electrical and Electronics Engineering (EEE)">Electrical and Electronics Engineering (EEE)</option>
+                    <option value="Mechanical Engineering">Mechanical Engineering</option>
+                    <option value="Civil Engineering">Civil Engineering</option>
+                    <option value="Biomedical Engineering">Biomedical Engineering</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div class="field-error" id="branchError"></div>
+              </div>
+
+              <div class="form-group">
+                <label for="collegeName">College / Institute Name <span class="optional">(Optional)</span></label>
+                <div class="input-wrapper">
+                  <span class="input-icon">🏛️</span>
+                  <input type="text" id="collegeName" name="collegeName" placeholder="Dr. M.G.R. Educational and Research Institute">
+                </div>
+              </div>
+
+              <div class="form-alert" id="formAlert" style="display:none;"></div>
+
+              <button type="submit" id="startQuizBtn" class="btn btn-primary btn-block btn-pulse">
+                <span>START QUIZ NOW 🚀</span>
+              </button>
+
+              <div class="secure-badge">
+                <span>🔒 Privacy Protected • Safe Student Registration</span>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         VIEW 2: INTERACTIVE QUIZ GAME
+         ======================================================== -->
+    <section id="viewQuiz" class="view-section">
+      <div class="quiz-container">
+        <!-- HUD / Status Header -->
+        <div class="quiz-hud">
+          <div class="hud-left">
+            <span class="hud-badge" id="hudQuestionCounter">Question 1 of 10</span>
+            <span class="category-pill" id="hudCategory">General Engineering</span>
+            <span class="difficulty-pill" id="hudDifficulty">Medium</span>
+          </div>
+          <div class="hud-right">
+            <div class="hud-timer">
+              <span class="timer-icon">⏱️</span>
+              <span id="quizTimerText">00:00</span>
+            </div>
+            <div class="participant-badge-pill" id="hudParticipantName">Student</div>
+          </div>
+        </div>
+
+        <!-- Animated Progress Bar -->
+        <div class="quiz-progress-track">
+          <div class="quiz-progress-fill" id="quizProgressFill" style="width: 10%;"></div>
+        </div>
+
+        <!-- Question Card -->
+        <div class="glass-card question-card" id="questionCard">
+          <div class="question-header">
+            <span class="q-number" id="qNumberBadge">Q1</span>
+            <h2 class="q-title" id="qText">Loading question...</h2>
+          </div>
+
+          <!-- Options Grid (A, B, C, D) -->
+          <div class="options-grid" id="optionsGrid">
+            <!-- Rendered dynamically -->
+          </div>
+
+          <!-- Navigation & Jump Controls -->
+          <div class="quiz-controls">
+            <button id="prevQuestionBtn" class="btn btn-secondary" disabled>
+              ← PREVIOUS
+            </button>
+
+            <!-- 10 Question Navigator Pills -->
+            <div class="question-pills-row" id="questionPillsRow">
+              <!-- Rendered dynamically 1-10 -->
+            </div>
+
+            <button id="nextQuestionBtn" class="btn btn-primary">
+              NEXT →
+            </button>
+            <button id="submitQuizBtn" class="btn btn-gold" style="display:none;">
+              SUBMIT QUIZ 🏁
+            </button>
+          </div>
+        </div>
+
+        <!-- Hotkey hints -->
+        <div class="hotkey-footer">
+          <span class="key-hint"><kbd>1</kbd>-<kbd>4</kbd> or <kbd>A</kbd>-<kbd>D</kbd> Select Option</span>
+          <span class="key-hint"><kbd>←</kbd> Previous</span>
+          <span class="key-hint"><kbd>→</kbd> Next</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         VIEW 3: RESULTS & PERFORMANCE PAGE
+         ======================================================== -->
+    <section id="viewResults" class="view-section">
+      <div class="results-container">
+        
+        <!-- Score Celebration Header -->
+        <div class="glass-card results-hero-card">
+          <div class="results-badge" id="resultsPerformanceBadge">Master Engineer 🏆</div>
+          <h1 class="results-title" id="resultsGreeting">Congratulations, Participant!</h1>
+          <p class="results-message" id="resultsPerformanceMessage">Outstanding! You have an excellent engineering brain!</p>
+
+          <!-- Circular Radial Progress Ring -->
+          <div class="score-radial-wrapper">
+            <svg class="score-radial-svg" viewBox="0 0 160 160">
+              <circle class="score-circle-bg" cx="80" cy="80" r="70"></circle>
+              <circle class="score-circle-progress" id="scoreCircleProgress" cx="80" cy="80" r="70"></circle>
+            </svg>
+            <div class="score-inner-text">
+              <div class="score-big-number" id="resultsScoreNumber">0</div>
+              <div class="score-max-label">/ 10 MARKS</div>
+              <div class="score-pct-badge" id="resultsScorePct">0%</div>
+            </div>
+          </div>
+
+          <!-- Score Breakdown Grid -->
+          <div class="metrics-summary-grid">
+            <div class="metric-box">
+              <span class="m-label">Participant</span>
+              <span class="m-val" id="metricName">-</span>
+            </div>
+            <div class="metric-box">
+              <span class="m-label">Branch</span>
+              <span class="m-val" id="metricBranch">-</span>
+            </div>
+            <div class="metric-box success-box">
+              <span class="m-label">Correct Answers</span>
+              <span class="m-val" id="metricCorrect">0</span>
+            </div>
+            <div class="metric-box alert-box">
+              <span class="m-label">Incorrect / Skipped</span>
+              <span class="m-val" id="metricIncorrect">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- E-Certificate Card -->
+        <div class="glass-card certificate-action-card">
+          <div class="cert-card-header">
+            <div>
+              <span class="badge-gold">OFFICIAL CREDENTIAL</span>
+              <h2 class="cert-card-title">Your Verified E-Certificate</h2>
+              <p class="cert-card-subtitle">Landscape format certificate authorized by Dr. M.G.R. Educational and Research Institute & MGR IEI Students Chapter.</p>
+            </div>
+            <div class="cert-id-tag" id="certIdTag">ID: TYEB-2026-XXXX</div>
+          </div>
+
+          <!-- Certificate Visual Preview -->
+          <div class="certificate-preview-box">
+            <div class="cert-preview-frame">
+              <img src="/assets/logos/certificate-clean-template.jpg" alt="Certificate Preview Base" class="cert-base-img" id="certBasePreview">
+              <div class="cert-overlay-content">
+                <div class="cert-overlay-name" id="certPreviewName">PARTICIPANT NAME</div>
+                <div class="cert-overlay-desc">Thank you for participating in the Test Your Engineering Brain quiz and testing your engineering knowledge.</div>
+                <div class="cert-overlay-meta">
+                  <span id="certPreviewBranch">Branch: Engineering</span>
+                  <span id="certPreviewScore">Score: 10 / 10 (100%)</span>
+                </div>
+                <div class="cert-overlay-id" id="certPreviewId">Certificate ID: TYEB-2026-XXXX</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Download & Email Delivery Hub -->
+          <div class="cert-delivery-row">
+            <div class="download-col">
+              <a id="downloadCertBtn" href="#" class="btn btn-primary btn-lg" download>
+                <span>📥 DOWNLOAD E-CERTIFICATE (PDF)</span>
+              </a>
+              <small class="download-sub">Print-ready landscape A4 PDF with selectable vector text.</small>
+            </div>
+
+            <!-- Email Status Indicator Box -->
+            <div class="email-status-box" id="emailStatusBox">
+              <div class="email-status-header">
+                <span class="status-indicator-dot" id="emailStatusDot"></span>
+                <span class="email-status-title" id="emailStatusTitle">Email Status: Processing...</span>
+              </div>
+              <p class="email-status-desc" id="emailStatusDesc">
+                Dispatching your personalized certificate to your registered email address.
+              </p>
+              <div class="email-actions-row">
+                <button id="resendEmailBtn" class="btn btn-outline-teal btn-sm">
+                  🔄 Resend Email
+                </button>
+                <button id="viewSimulatedEmailBtn" class="btn btn-outline-gold btn-sm" style="display:none;">
+                  👁️ View Email Preview
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Question Review Accordion -->
+        <div class="glass-card review-card">
+          <div class="review-header">
+            <h3>Detailed Question Review & Explanations</h3>
+            <p>Analyze your answers with in-depth engineering breakdowns for each topic.</p>
+          </div>
+          <div class="review-accordion" id="reviewAccordion">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <div class="results-footer-actions">
+          <button id="retakeQuizBtn" class="btn btn-secondary">
+            🔄 Retake Quiz / New Attempt
+          </button>
+          <a href="/" class="btn btn-outline-gold">
+            🏠 Back to Home
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         VIEW 4: ADMINISTRATOR DASHBOARD
+         ======================================================== -->
+    <section id="viewAdmin" class="view-section">
+      <div class="admin-container">
+        <!-- Admin Header -->
+        <div class="admin-topbar">
+          <div>
+            <div class="badge-pill">ADMINISTRATOR CONTROL PANEL</div>
+            <h1 class="admin-title">Quiz Participation & Analytics</h1>
+            <p class="admin-subtitle">MGR IEI Students Chapter • Real-time Participant Audit & Email Dispatch Center</p>
+          </div>
+          <div class="admin-actions">
+            <button id="exportCsvBtn" class="btn btn-gold btn-sm">
+              📊 Export to CSV (Excel)
+            </button>
+            <button id="adminRefreshBtn" class="btn btn-secondary btn-sm">
+              🔄 Refresh Data
+            </button>
+            <button id="adminLogoutBtn" class="btn btn-outline-danger btn-sm">
+              🚪 Logout
+            </button>
+          </div>
+        </div>
+
+        <!-- Metrics Cards Grid -->
+        <div class="admin-metrics-grid">
+          <div class="admin-stat-card">
+            <div class="stat-icon">👥</div>
+            <div class="stat-content">
+              <div class="stat-number" id="statRegistered">0</div>
+              <div class="stat-label">Total Registered</div>
+            </div>
+          </div>
+          <div class="admin-stat-card">
+            <div class="stat-icon">✅</div>
+            <div class="stat-content">
+              <div class="stat-number" id="statCompleted">0</div>
+              <div class="stat-label">Quizzes Completed</div>
+            </div>
+          </div>
+          <div class="admin-stat-card">
+            <div class="stat-icon">📜</div>
+            <div class="stat-content">
+              <div class="stat-number" id="statCertificates">0</div>
+              <div class="stat-label">Certificates Issued</div>
+            </div>
+          </div>
+          <div class="admin-stat-card">
+            <div class="stat-icon">✉️</div>
+            <div class="stat-content">
+              <div class="stat-number text-success" id="statEmailsSent">0</div>
+              <div class="stat-label">Emails Delivered</div>
+            </div>
+          </div>
+          <div class="admin-stat-card">
+            <div class="stat-icon">⏳</div>
+            <div class="stat-content">
+              <div class="stat-number text-warning" id="statEmailsPending">0</div>
+              <div class="stat-label">Emails Pending / Config</div>
+            </div>
+          </div>
+          <div class="admin-stat-card">
+            <div class="stat-icon">🎯</div>
+            <div class="stat-content">
+              <div class="stat-number text-info" id="statAverageScore">0.0</div>
+              <div class="stat-label">Average Score (/10)</div>
+            </div>
+          </div>
+          <div class="admin-stat-card">
+            <div class="stat-icon">🌟</div>
+            <div class="stat-content">
+              <div class="stat-number text-gold" id="statHighestScore">0</div>
+              <div class="stat-label">Highest Score</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Branch Distribution & Score Distribution Visual Cards -->
+        <div class="admin-charts-grid">
+          <div class="glass-card chart-card">
+            <h3 class="chart-card-title">Branch-wise Participation</h3>
+            <div class="bars-container" id="branchDistributionBars">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+          <div class="glass-card chart-card">
+            <h3 class="chart-card-title">Score Performance Brackets</h3>
+            <div class="bars-container" id="scoreDistributionBars">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Participant Management Table Card -->
+        <div class="glass-card admin-table-card">
+          <div class="table-header-controls">
+            <div class="search-input-box">
+              <span class="icon">🔍</span>
+              <input type="text" id="adminSearchInput" placeholder="Search by participant name or email...">
+            </div>
+
+            <div class="filter-controls">
+              <select id="adminBranchFilter">
+                <option value="">All Branches</option>
+                <option value="Computer Science and Engineering (CSE)">CSE</option>
+                <option value="Information Technology (IT)">IT</option>
+                <option value="Artificial Intelligence and Data Science (AI & DS)">AI & DS</option>
+                <option value="Artificial Intelligence and Machine Learning (AI & ML)">AI & ML</option>
+                <option value="Electronics and Communication Engineering (ECE)">ECE</option>
+                <option value="Electrical and Electronics Engineering (EEE)">EEE</option>
+                <option value="Mechanical Engineering">Mechanical</option>
+                <option value="Civil Engineering">Civil</option>
+                <option value="Biomedical Engineering">Biomedical</option>
+                <option value="Other">Other</option>
+              </select>
+
+              <select id="adminStatusFilter">
+                <option value="">All Statuses</option>
+                <option value="Completed">Completed</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Not Started">Not Started</option>
+              </select>
+
+              <select id="adminScoreFilter">
+                <option value="">All Scores</option>
+                <option value="high">High (9-10)</option>
+                <option value="medium">Medium (5-8)</option>
+                <option value="low">Low (0-4)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Responsive Data Table -->
+          <div class="table-responsive">
+            <table class="data-table" id="participantsTable">
+              <thead>
+                <tr>
+                  <th>Participant</th>
+                  <th>Branch</th>
+                  <th>Score</th>
+                  <th>Quiz Status</th>
+                  <th>Certificate</th>
+                  <th>Email Status</th>
+                  <th>Completion Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="participantsTableBody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- System Configuration & Setup Guide Accordion -->
+        <div class="glass-card admin-config-card">
+          <div class="config-card-header">
+            <h3>⚙️ Server Configuration & Email Provider Integration</h3>
+            <span class="badge-pill" id="configStatusBadge">Mode: Simulation / Standby</span>
+          </div>
+          <div class="config-card-body">
+            <p>To enable real-time transactional inbox delivery, set either <code>RESEND_API_KEY</code> or your <code>SMTP_*</code> credentials in the <code>.env</code> file. Without credentials, the system safely records and formats all outgoing emails with certificates into the system audit log without throwing errors.</p>
+            <div class="code-snippet">
+              <pre><code># .env Email Configuration Examples
+# Option 1: Resend (Recommended)
+RESEND_API_KEY=re_123456789abcdef
+
+# Option 2: SMTP (Gmail / SendGrid / Custom)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_app_password
+FROM_EMAIL=mgr.iei.chapter@drmgrdu.ac.in
+FROM_NAME="MGR IEI Students Chapter"</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========================================================
+       MODALS & DIALOGS
+       ======================================================== -->
+
+  <!-- 1. Submission Confirmation Dialog -->
+  <div class="modal-overlay" id="confirmSubmitModal">
+    <div class="modal-card">
+      <div class="modal-icon">🏁</div>
+      <h3 class="modal-title">Ready to Submit Your Quiz?</h3>
+      <p class="modal-desc" id="confirmSubmitText">
+        You have answered 10 out of 10 questions. Once submitted, your score will be calculated and your certificate generated.
+      </p>
+      <div class="modal-stats" id="modalStatsPreview">
+        <!-- Answered vs Unanswered breakdown -->
+      </div>
+      <div class="modal-actions">
+        <button id="cancelSubmitBtn" class="btn btn-secondary">
+          Review Answers
+        </button>
+        <button id="finalSubmitBtn" class="btn btn-gold">
+          Yes, Submit Final Answers 🚀
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Admin Authentication Modal -->
+  <div class="modal-overlay" id="adminLoginModal">
+    <div class="modal-card">
+      <div class="modal-icon">🔒</div>
+      <h3 class="modal-title">Administrator Authentication</h3>
+      <p class="modal-desc">Enter the administrative access key to manage quiz records and certificates.</p>
+      <form id="adminLoginForm">
+        <div class="form-group">
+          <label for="adminPasswordInput">Admin Security Key</label>
+          <div class="input-wrapper">
+            <span class="input-icon">🔑</span>
+            <input type="password" id="adminPasswordInput" placeholder="Enter Admin Password" required autocomplete="current-password">
+          </div>
+          <small class="input-hint">Default Fest Key: <code>IEI@Engineering2026</code></small>
+          <div class="field-error" id="adminLoginError"></div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="closeAdminLoginBtn" class="btn btn-secondary">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary">
+            Authenticate
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 3. Admin Participant Detail View Modal -->
+  <div class="modal-overlay" id="participantDetailModal">
+    <div class="modal-card modal-lg">
+      <div class="modal-header-row">
+        <h3 class="modal-title" id="detailModalTitle">Participant Details</h3>
+        <button id="closeDetailModalBtn" class="btn-close">&times;</button>
+      </div>
+      <div class="detail-modal-body" id="detailModalBody">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Simulated Email Preview Modal -->
+  <div class="modal-overlay" id="simulatedEmailModal">
+    <div class="modal-card modal-lg">
+      <div class="modal-header-row">
+        <h3 class="modal-title">✉️ Simulated Email Delivery Record</h3>
+        <button id="closeSimulatedEmailBtn" class="btn-close">&times;</button>
+      </div>
+      <div class="detail-modal-body" id="simulatedEmailContent">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Audio elements / Web Audio Synthesizer -->
+  <div class="sound-toggle-btn" id="soundToggleBtn" title="Toggle Sound FX">
+    🔊
+  </div>
+
+  <!-- Scripts -->
+  <script src="/js/app.js"></script>
+</body>
+</html>

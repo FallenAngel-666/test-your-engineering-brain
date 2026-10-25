@@ -1,0 +1,27 @@
+{
+  "name": "test-your-engineering-brain",
+  "version": "1.0.0",
+  "description": "Interactive Engineering Quiz Game with Automatic E-Certificate Generation organized by MGR IEI Students Chapter, Dr. M.G.R. Educational and Research Institute",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "node test-suite.js"
+  },
+  "keywords": [
+    "engineering-quiz",
+    "e-certificate",
+    "pdf-lib",
+    "mgr-iei-students-chapter",
+    "dr-mgr-university"
+  ],
+  "author": "MGR IEI Students Chapter",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
+    "nodemailer": "^10.2.1",
+    "pdf-lib": "^1.17.1"
+  }
+}
