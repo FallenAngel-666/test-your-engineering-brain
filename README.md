@@ -17,7 +17,7 @@
 * Real-time client & server-side validation for:
   * Full Name (minimum 2 characters, alphabetic sanitization)
   * Email Address (RFC-compliant regex verification)
-  * Engineering Branch dropdown (CSE, IT, AI & DS, AI & ML, ECE, EEE, Mechanical, Civil, Biomedical, Other)
+  * Engineering Branch dropdown (CSE, IT, AI & DS, AI & ML, Cyber Security, Cyber Forensics and Information Security, ECE, EEE, Mechanical, Civil, Biomedical, Other)
   * College/Institute Name (optional)
 * Secure participant ID generation (`PART-XXXX-XXXX`) and idempotency to prevent duplicate submissions.
 
