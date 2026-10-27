@@ -312,32 +312,31 @@
             </div>
           </div>
 
-          <!-- Download & Email Delivery Hub -->
+          <!-- E-Certificate Redirection & Download Hub -->
           <div class="cert-delivery-row">
-            <div class="download-col">
-              <a id="downloadCertBtn" href="#" class="btn btn-primary btn-lg" download>
-                <span>📥 DOWNLOAD E-CERTIFICATE (PDF)</span>
-              </a>
-              <small class="download-sub">Print-ready landscape A4 PDF with selectable vector text.</small>
-            </div>
-
-            <!-- Email Status Indicator Box -->
-            <div class="email-status-box" id="emailStatusBox">
+            <!-- Primary Action: Fill for E-Certificate (Redirect to Google Form) -->
+            <div class="email-status-box form-redirect-box">
               <div class="email-status-header">
-                <span class="status-indicator-dot" id="emailStatusDot"></span>
-                <span class="email-status-title" id="emailStatusTitle">Email Status: Processing...</span>
+                <span class="status-indicator-dot sent"></span>
+                <span class="email-status-title">Official E-Certificate by Email</span>
               </div>
-              <p class="email-status-desc" id="emailStatusDesc">
-                Dispatching your personalized certificate to your registered email address.
+              <p class="email-status-desc">
+                Congratulations on completing the quiz! Fill out the official confirmation form to automatically receive your verified E-Certificate directly in your email inbox.
               </p>
               <div class="email-actions-row">
-                <button id="resendEmailBtn" class="btn btn-outline-teal btn-sm">
-                  🔄 Resend Email
-                </button>
-                <button id="viewSimulatedEmailBtn" class="btn btn-outline-gold btn-sm" style="display:none;">
-                  👁️ View Email Preview
-                </button>
+                <a id="fillCertificateBtn" href="https://docs.google.com/forms/d/e/1FAIpQLSesbL495fyPcfYw49WAKHQqBVtaMsLOrkSRARc8dX6kKVUBMw/viewform?usp=publish-editor" target="_blank" rel="noopener noreferrer" class="btn btn-gold btn-block btn-pulse">
+                  <span>✍️ FILL FOR E-CERTIFICATE 🚀</span>
+                </a>
               </div>
+              <small class="redirect-hint">Official MGR IEI Students Chapter certificate auto-delivery form.</small>
+            </div>
+
+            <!-- Instant PDF Download -->
+            <div class="download-col">
+              <a id="downloadCertBtn" href="#" class="btn btn-primary btn-block btn-lg" download>
+                <span>📥 DOWNLOAD E-CERTIFICATE (PDF)</span>
+              </a>
+              <small class="download-sub">Instant print-ready landscape A4 PDF with selectable vector text.</small>
             </div>
           </div>
         </div>
@@ -625,6 +624,28 @@ FROM_NAME="MGR IEI Students Chapter"</code></pre>
       </div>
       <div class="detail-modal-body" id="simulatedEmailContent">
         <!-- Populated dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. E-Certificate Redirection Modal -->
+  <div class="modal-overlay" id="formRedirectModal">
+    <div class="modal-card">
+      <div class="modal-icon">📜</div>
+      <h3 class="modal-title">Quiz Completed!</h3>
+      <p class="modal-desc" id="formRedirectDesc">
+        Fill out the official confirmation form to automatically receive your verified E-Certificate in your email inbox.
+      </p>
+      <div class="redirect-countdown-box" id="redirectCountdownBox" style="margin-bottom: 20px; font-weight: 700; color: var(--accent-gold);">
+        Redirecting to form in <span id="countdownNumber">5</span>s...
+      </div>
+      <div class="modal-actions" style="flex-direction: column; gap: 10px;">
+        <a id="modalFillFormBtn" href="https://docs.google.com/forms/d/e/1FAIpQLSesbL495fyPcfYw49WAKHQqBVtaMsLOrkSRARc8dX6kKVUBMw/viewform?usp=publish-editor" target="_blank" rel="noopener noreferrer" class="btn btn-gold btn-block">
+          ✍️ FILL FOR E-CERTIFICATE NOW 🚀
+        </a>
+        <button type="button" id="stayOnResultsBtn" class="btn btn-secondary btn-block">
+          View Results & Download PDF First
+        </button>
       </div>
     </div>
   </div>

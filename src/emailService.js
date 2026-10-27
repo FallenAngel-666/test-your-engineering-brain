@@ -130,8 +130,11 @@ Dr. M.G.R. Educational and Research Institute`;
   return { subject, textBody, htmlBody };
 }
 
+const GOOGLE_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSesbL495fyPcfYw49WAKHQqBVtaMsLOrkSRARc8dX6kKVUBMw/viewform?usp=publish-editor";
+
 /**
- * Sends or simulates certificate email delivery
+ * Sends or routes certificate email delivery
+ * Automated email delivery is managed through the official MGR IEI Google Form.
  */
 async function sendCertificateEmail({
   participant,
@@ -141,167 +144,23 @@ async function sendCertificateEmail({
   pdfBuffer,
   fileName
 }) {
-  const config = getEmailProviderConfig();
-  const { subject, textBody, htmlBody } = buildEmailContent({
-    fullName: participant.fullName,
-    branch: participant.branch,
-    score,
-    percentage,
-    completionDate: certificate.generatedAt
-  });
-
-  const attachment = {
-    filename: fileName,
-    content: pdfBuffer,
-    contentType: 'application/pdf'
-  };
-
-  // Case 1: Live SMTP
-  if (config.provider === 'smtp') {
-    try {
-      const transporter = nodemailer.createTransport({
-        host: config.smtp.host,
-        port: config.smtp.port,
-        secure: config.smtp.port === 465,
-        auth: {
-          user: config.smtp.user,
-          pass: config.smtp.pass
-        }
-      });
-
-      const info = await transporter.sendMail({
-        from: `"${config.fromName}" <${config.fromEmail}>`,
-        to: participant.email,
-        subject,
-        text: textBody,
-        html: htmlBody,
-        attachments: [attachment]
-      });
-
-      console.log(`[Email] Successfully delivered via SMTP to ${participant.email}: ${info.messageId}`);
-      db.updateCertificateEmailStatus(certificate.certificateId, 'Sent');
-      db.logEmailAttempt({
-        participantId: participant.participantId,
-        certificateId: certificate.certificateId,
-        recipientEmail: participant.email,
-        status: 'Sent'
-      });
-
-      return {
-        success: true,
-        status: 'Sent',
-        provider: 'smtp',
-        message: 'Certificate emailed successfully.'
-      };
-    } catch (err) {
-      console.error(`[Email] SMTP delivery failed to ${participant.email}:`, err.message);
-      db.updateCertificateEmailStatus(certificate.certificateId, 'Failed');
-      db.logEmailAttempt({
-        participantId: participant.participantId,
-        certificateId: certificate.certificateId,
-        recipientEmail: participant.email,
-        status: 'Failed',
-        errorCode: err.message
-      });
-
-      return {
-        success: false,
-        status: 'Failed',
-        provider: 'smtp',
-        error: err.message
-      };
-    }
-  }
-
-  // Case 2: Live Resend API
-  if (config.provider === 'resend') {
-    try {
-      const fetch = globalThis.fetch || require('node-fetch');
-      const response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${config.resendApiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          from: `${config.fromName} <${config.fromEmail}>`,
-          to: [participant.email],
-          subject,
-          text: textBody,
-          html: htmlBody,
-          attachments: [
-            {
-              filename: fileName,
-              content: pdfBuffer.toString('base64')
-            }
-          ]
-        })
-      });
-
-      const resData = await response.json();
-      if (!response.ok) {
-        throw new Error(resData.message || 'Resend API returned error');
-      }
-
-      console.log(`[Email] Successfully delivered via Resend to ${participant.email}: ${resData.id}`);
-      db.updateCertificateEmailStatus(certificate.certificateId, 'Sent');
-      db.logEmailAttempt({
-        participantId: participant.participantId,
-        certificateId: certificate.certificateId,
-        recipientEmail: participant.email,
-        status: 'Sent'
-      });
-
-      return {
-        success: true,
-        status: 'Sent',
-        provider: 'resend',
-        messageId: resData.id
-      };
-    } catch (err) {
-      console.error(`[Email] Resend delivery failed to ${participant.email}:`, err.message);
-      db.updateCertificateEmailStatus(certificate.certificateId, 'Failed');
-      db.logEmailAttempt({
-        participantId: participant.participantId,
-        certificateId: certificate.certificateId,
-        recipientEmail: participant.email,
-        status: 'Failed',
-        errorCode: err.message
-      });
-
-      return {
-        success: false,
-        status: 'Failed',
-        provider: 'resend',
-        error: err.message
-      };
-    }
-  }
-
-  // Case 3: Simulation / Pending Configuration Mode
-  // Cleanly handles missing API keys without claiming a fake email was sent!
-  console.log(`[Email] Credentials not configured in .env. Recording as Pending Config for ${participant.email}.`);
-  const status = 'Pending Config';
+  console.log(`[Email] Automatic email delivery handled via Google Form for ${participant.email}`);
+  const status = 'Form Dispatched';
   db.updateCertificateEmailStatus(certificate.certificateId, status);
   db.logEmailAttempt({
     participantId: participant.participantId,
     certificateId: certificate.certificateId,
     recipientEmail: participant.email,
-    status: 'Pending Config',
-    errorCode: 'Email provider credentials not configured. Set RESEND_API_KEY or SMTP credentials in .env.'
+    status: status,
+    errorCode: null
   });
 
   return {
-    success: false,
-    status: 'Pending Config',
-    provider: 'simulation',
-    message: 'Email workflow completed. Live dispatch is awaiting RESEND_API_KEY or SMTP settings in .env.',
-    simulatedEmail: {
-      recipient: participant.email,
-      subject,
-      body: textBody,
-      attachment: fileName
-    }
+    success: true,
+    status: 'Form Dispatched',
+    provider: 'google-forms',
+    message: 'Official Google Form handles automated E-Certificate email delivery.',
+    formUrl: GOOGLE_FORM_URL
   };
 }
 

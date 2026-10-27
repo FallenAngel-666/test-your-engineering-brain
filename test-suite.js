@@ -219,7 +219,7 @@ async function executeSuite() {
       fileName: 'test.pdf'
     });
 
-    assert.ok(result.status === 'Sent' || result.status === 'Pending Config');
+    assert.ok(result.status === 'Form Dispatched' || result.status === 'Sent' || result.status === 'Pending Config');
     const logs = db.getEmailLogsByParticipant(p.participantId);
     assert.ok(logs.length >= 1, 'Email log must have recorded the attempt');
     assert.strictEqual(logs[0].participantId, p.participantId);

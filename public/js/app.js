@@ -671,6 +671,50 @@ function displayResults(data) {
 
   // Switch to Results
   switchView('results');
+
+  // Trigger E-Certificate Redirection Modal with countdown to Google Form
+  const googleFormUrl = "https://docs.google.com/forms/d/e/1FAIpQLSesbL495fyPcfYw49WAKHQqBVtaMsLOrkSRARc8dX6kKVUBMw/viewform?usp=publish-editor";
+  openFormRedirectModal(googleFormUrl);
+}
+
+let redirectTimer = null;
+function openFormRedirectModal(formUrl) {
+  const modal = document.getElementById('formRedirectModal');
+  if (!modal) return;
+
+  const countdownElem = document.getElementById('countdownNumber');
+  let seconds = 5;
+  if (countdownElem) countdownElem.textContent = seconds;
+
+  modal.classList.add('active');
+
+  if (redirectTimer) clearInterval(redirectTimer);
+  redirectTimer = setInterval(() => {
+    seconds--;
+    if (countdownElem) countdownElem.textContent = seconds;
+    if (seconds <= 0) {
+      clearInterval(redirectTimer);
+      modal.classList.remove('active');
+      window.open(formUrl, '_blank');
+    }
+  }, 1000);
+
+  const fillBtn = document.getElementById('modalFillFormBtn');
+  if (fillBtn) {
+    fillBtn.onclick = () => {
+      if (redirectTimer) clearInterval(redirectTimer);
+      modal.classList.remove('active');
+    };
+  }
+
+  const stayBtn = document.getElementById('stayOnResultsBtn');
+  if (stayBtn) {
+    stayBtn.onclick = () => {
+      if (redirectTimer) clearInterval(redirectTimer);
+      modal.classList.remove('active');
+      showToast('You can click "FILL FOR E-CERTIFICATE" anytime to receive your email certificate.', 'info');
+    };
+  }
 }
 
 function animateScoreNumber(targetScore) {
@@ -693,6 +737,8 @@ function updateEmailStatusUI(status, email, message) {
   const title = document.getElementById('emailStatusTitle');
   const desc = document.getElementById('emailStatusDesc');
   const viewEmailBtn = document.getElementById('viewSimulatedEmailBtn');
+
+  if (!dot || !title || !desc) return;
 
   dot.className = 'status-indicator-dot';
 
