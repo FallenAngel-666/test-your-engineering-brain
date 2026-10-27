@@ -80,8 +80,8 @@ function generateId(prefix = 'TYEB') {
 }
 
 // ----------------- PARTICIPANTS -----------------
-function createParticipant({ fullName, email, branch, collegeName = "" }) {
-  const participantId = generateId('PART');
+function createParticipant({ participantId: existingId, fullName, email, branch, collegeName = "" }) {
+  const participantId = existingId || generateId('PART');
   const now = new Date().toISOString();
 
   const participant = {
@@ -112,8 +112,8 @@ function getAllParticipants() {
 }
 
 // ----------------- QUIZ ATTEMPTS -----------------
-function createQuizAttempt(participantId) {
-  const attemptId = generateId('ATT');
+function createQuizAttempt(participantId, existingAttemptId) {
+  const attemptId = existingAttemptId || generateId('ATT');
   const now = new Date().toISOString();
 
   const attempt = {

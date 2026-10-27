@@ -344,6 +344,14 @@ function setupRegistration() {
       state.participant = data.participant;
       state.attempt = data.attempt;
 
+      // Persist in session and local storage for cross-container serverless recovery
+      try {
+        sessionStorage.setItem('tyeb_participant', JSON.stringify(data.participant));
+        sessionStorage.setItem('tyeb_attempt', JSON.stringify(data.attempt));
+        localStorage.setItem('tyeb_participant', JSON.stringify(data.participant));
+        localStorage.setItem('tyeb_attempt', JSON.stringify(data.attempt));
+      } catch (e) {}
+
       if (data.alreadyCompleted) {
         showToast('Found your previous completed attempt! Loading certificate...', 'info');
         // Fetch existing attempt results
@@ -558,14 +566,23 @@ async function submitFinalQuiz() {
 
   showToast('Evaluating answers and generating certificate...', 'info');
 
+  const participant = state.participant ||
+    JSON.parse(sessionStorage.getItem('tyeb_participant') || 'null') ||
+    JSON.parse(localStorage.getItem('tyeb_participant') || 'null');
+
+  const attempt = state.attempt ||
+    JSON.parse(sessionStorage.getItem('tyeb_attempt') || 'null') ||
+    JSON.parse(localStorage.getItem('tyeb_attempt') || 'null');
+
   try {
     const res = await fetch('/api/quiz/submit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        participantId: state.participant.participantId,
-        attemptId: state.attempt.attemptId,
-        answers: state.userAnswers
+        participantId: participant ? participant.participantId : null,
+        attemptId: attempt ? attempt.attemptId : null,
+        answers: state.userAnswers,
+        participant: participant
       })
     });
 

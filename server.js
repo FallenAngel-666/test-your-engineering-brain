@@ -152,20 +152,41 @@ app.get('/api/quiz/questions', (req, res) => {
 // 3. Submit Quiz & Server-Side Evaluation
 app.post('/api/quiz/submit', async (req, res) => {
   try {
-    const { participantId, attemptId, answers } = req.body;
+    const { participantId, attemptId, answers, participant: pPayload } = req.body;
 
-    if (!participantId || !attemptId) {
-      return res.status(400).json({ error: 'Participant ID and Attempt ID are required.' });
+    let participant = participantId ? db.findParticipantById(participantId) : null;
+
+    // Resilient Recovery: If participant was cleared (server restart or Vercel multi-container),
+    // auto-restore from the submission payload so participant NEVER loses their quiz progress!
+    if (!participant && pPayload && (pPayload.email || pPayload.fullName)) {
+      if (pPayload.email) {
+        participant = db.findParticipantByEmail(pPayload.email);
+      }
+      if (!participant) {
+        participant = db.createParticipant({
+          participantId: participantId || pPayload.participantId,
+          fullName: pPayload.fullName || 'Participant',
+          email: pPayload.email || 'participant@drmgrdu.ac.in',
+          branch: pPayload.branch || 'Other',
+          collegeName: pPayload.collegeName || ''
+        });
+      }
     }
 
-    const participant = db.findParticipantById(participantId);
     if (!participant) {
-      return res.status(404).json({ error: 'Participant not found.' });
+      // Ultimate fallback: auto-create so the student's submission NEVER fails
+      participant = db.createParticipant({
+        participantId: participantId || 'PART-RECOVERED',
+        fullName: (pPayload && pPayload.fullName) ? pPayload.fullName : 'Engineering Participant',
+        email: (pPayload && pPayload.email) ? pPayload.email : 'iei@drmgrdu.ac.in',
+        branch: (pPayload && pPayload.branch) ? pPayload.branch : 'Other',
+        collegeName: (pPayload && pPayload.collegeName) ? pPayload.collegeName : 'Dr. M.G.R. Educational and Research Institute'
+      });
     }
 
-    const attempt = db.findAttemptById(attemptId);
+    let attempt = attemptId ? db.findAttemptById(attemptId) : null;
     if (!attempt) {
-      return res.status(404).json({ error: 'Quiz attempt not found.' });
+      attempt = db.createQuizAttempt(participant.participantId, attemptId);
     }
 
     if (attempt.status === 'Completed') {
