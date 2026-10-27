@@ -25,8 +25,12 @@ const state = {
 const AudioFX = {
   ctx: null,
   init() {
-    if (!this.ctx && (window.AudioContext || window.webkitAudioContext)) {
-      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    try {
+      if (!this.ctx && (window.AudioContext || window.webkitAudioContext)) {
+        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    } catch (e) {
+      this.ctx = null;
     }
   },
   playClick() {
@@ -804,45 +808,50 @@ function renderReviewAccordion(breakdown = []) {
 }
 
 function setupResultsActions() {
-  // Resend Email
-  document.getElementById('resendEmailBtn').addEventListener('click', async () => {
-    if (!state.participant) return;
-    const btn = document.getElementById('resendEmailBtn');
-    btn.disabled = true;
-    btn.textContent = 'Resending...';
+  // Resend Email (if button exists)
+  const resendBtn = document.getElementById('resendEmailBtn');
+  if (resendBtn) {
+    resendBtn.addEventListener('click', async () => {
+      if (!state.participant) return;
+      resendBtn.disabled = true;
+      resendBtn.textContent = 'Resending...';
 
-    try {
-      const res = await fetch('/api/certificate/resend', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ participantId: state.participant.participantId })
-      });
-      const data = await res.json();
-      showToast(data.message || 'Email resent successfully.', 'success');
-      updateEmailStatusUI(data.status, state.participant.email, data.message);
-    } catch (err) {
-      showToast('Error resending email.', 'error');
-    } finally {
-      btn.disabled = false;
-      btn.textContent = '🔄 Resend Email';
-    }
-  });
+      try {
+        const res = await fetch('/api/certificate/resend', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ participantId: state.participant.participantId })
+        });
+        const data = await res.json();
+        showToast(data.message || 'Email resent successfully.', 'success');
+        updateEmailStatusUI(data.status, state.participant.email, data.message);
+      } catch (err) {
+        showToast('Error resending email.', 'error');
+      } finally {
+        resendBtn.disabled = false;
+        resendBtn.textContent = '🔄 Resend Email';
+      }
+    });
+  }
 
-  // Simulated Email Modal
-  document.getElementById('viewSimulatedEmailBtn').addEventListener('click', () => {
-    const p = state.participant;
-    const cert = state.lastCertificate;
-    const evalData = state.lastEvaluation;
+  // Simulated Email Modal (if button exists)
+  const simEmailBtn = document.getElementById('viewSimulatedEmailBtn');
+  if (simEmailBtn) {
+    simEmailBtn.addEventListener('click', () => {
+      const p = state.participant;
+      const cert = state.lastCertificate;
+      const evalData = state.lastEvaluation;
 
-    const modalContent = document.getElementById('simulatedEmailContent');
-    modalContent.innerHTML = `
-      <div style="background:#091224; border:1px solid var(--border-subtle); border-radius:8px; padding:16px; font-size:13px;">
-        <p><strong>To:</strong> ${p.email}</p>
-        <p><strong>From:</strong> MGR IEI Students Chapter &lt;iei@drmgrdu.ac.in&gt;</p>
-        <p><strong>Subject:</strong> Your Test Your Engineering Brain E-Certificate</p>
-        <p><strong>Attachment:</strong> 📎 Your_Engineering_Brain_Certificate_${cert.certificateId}.pdf</p>
-        <hr style="border:none; border-top:1px solid var(--border-subtle); margin:12px 0;">
-        <pre style="white-space:pre-wrap; font-family:var(--font-main); color:#e2e8f0; line-height:1.6;">Dear ${p.fullName},
+      const modalContent = document.getElementById('simulatedEmailContent');
+      if (modalContent && p && cert && evalData) {
+        modalContent.innerHTML = `
+          <div style="background:#091224; border:1px solid var(--border-subtle); border-radius:8px; padding:16px; font-size:13px;">
+            <p><strong>To:</strong> ${p.email}</p>
+            <p><strong>From:</strong> MGR IEI Students Chapter &lt;iei@drmgrdu.ac.in&gt;</p>
+            <p><strong>Subject:</strong> Your Test Your Engineering Brain E-Certificate</p>
+            <p><strong>Attachment:</strong> 📎 Your_Engineering_Brain_Certificate_${cert.certificateId}.pdf</p>
+            <hr style="border:none; border-top:1px solid var(--border-subtle); margin:12px 0;">
+            <pre style="white-space:pre-wrap; font-family:var(--font-main); color:#e2e8f0; line-height:1.6;">Dear ${p.fullName},
 
 Congratulations on completing the Test Your Engineering Brain quiz!
 
@@ -863,20 +872,28 @@ Keep learning, keep innovating, and continue challenging your engineering knowle
 Regards,
 MGR IEI Students Chapter
 Dr. M.G.R. Educational and Research Institute</pre>
-      </div>
-    `;
+          </div>
+        `;
+      }
 
-    document.getElementById('simulatedEmailModal').classList.add('active');
-  });
+      document.getElementById('simulatedEmailModal')?.classList.add('active');
+    });
+  }
 
-  document.getElementById('closeSimulatedEmailBtn').addEventListener('click', () => {
-    document.getElementById('simulatedEmailModal').classList.remove('active');
-  });
+  const closeSimBtn = document.getElementById('closeSimulatedEmailBtn');
+  if (closeSimBtn) {
+    closeSimBtn.addEventListener('click', () => {
+      document.getElementById('simulatedEmailModal')?.classList.remove('active');
+    });
+  }
 
   // Retake Quiz
-  document.getElementById('retakeQuizBtn').addEventListener('click', () => {
-    switchView('landing');
-  });
+  const retakeBtn = document.getElementById('retakeQuizBtn');
+  if (retakeBtn) {
+    retakeBtn.addEventListener('click', () => {
+      switchView('landing');
+    });
+  }
 }
 
 function loadCompletedResults(participant, attempt, cert) {
@@ -917,64 +934,99 @@ function setupAdminPortal() {
   const passwordInput = document.getElementById('adminPasswordInput');
   const loginError = document.getElementById('adminLoginError');
 
-  adminBtn.addEventListener('click', () => {
-    AudioFX.playClick();
-    if (state.adminToken) {
-      loadAdminDashboard();
-    } else {
+  function openAdminModal() {
+    if (loginModal) {
       loginModal.classList.add('active');
-      passwordInput.value = '';
-      loginError.textContent = '';
-      passwordInput.focus();
+      if (passwordInput) {
+        passwordInput.value = '';
+        setTimeout(() => passwordInput.focus(), 60);
+      }
+      if (loginError) loginError.textContent = '';
     }
-  });
+  }
 
-  closeLoginBtn.addEventListener('click', () => {
-    loginModal.classList.remove('active');
-  });
+  if (adminBtn) {
+    adminBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      try {
+        AudioFX.playClick();
+      } catch (err) {}
 
-  loginForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    loginError.textContent = '';
+      if (state.adminToken) {
+        loadAdminDashboard();
+      } else {
+        openAdminModal();
+      }
+    });
+  }
 
-    const password = passwordInput.value;
-    try {
-      const res = await fetch('/api/admin/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password })
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Authentication failed.');
-
-      state.adminToken = data.token;
-      sessionStorage.setItem('tyeb_admin_token', data.token);
+  if (closeLoginBtn && loginModal) {
+    closeLoginBtn.addEventListener('click', () => {
       loginModal.classList.remove('active');
-      showToast('Admin authentication successful.', 'success');
-      loadAdminDashboard();
-    } catch (err) {
-      loginError.textContent = err.message;
-    }
-  });
+    });
+  }
+
+  if (loginModal) {
+    loginModal.addEventListener('click', (e) => {
+      if (e.target === loginModal) {
+        loginModal.classList.remove('active');
+      }
+    });
+  }
+
+  if (loginForm) {
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (loginError) loginError.textContent = '';
+
+      const password = passwordInput ? passwordInput.value : '';
+      try {
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Authentication failed.');
+
+        state.adminToken = data.token;
+        sessionStorage.setItem('tyeb_admin_token', data.token);
+        if (loginModal) loginModal.classList.remove('active');
+        showToast('Admin authentication successful.', 'success');
+        loadAdminDashboard();
+      } catch (err) {
+        if (loginError) loginError.textContent = err.message;
+      }
+    });
+  }
 
   // Admin Controls
-  document.getElementById('adminRefreshBtn').addEventListener('click', () => {
-    loadAdminDashboard();
-    showToast('Dashboard data refreshed.', 'info');
-  });
+  const refreshBtn = document.getElementById('adminRefreshBtn');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => {
+      loadAdminDashboard();
+      showToast('Dashboard data refreshed.', 'info');
+    });
+  }
 
-  document.getElementById('adminLogoutBtn').addEventListener('click', () => {
-    state.adminToken = null;
-    sessionStorage.removeItem('tyeb_admin_token');
-    showToast('Logged out of Admin Portal.', 'info');
-    switchView('landing');
-  });
+  const logoutBtn = document.getElementById('adminLogoutBtn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+      state.adminToken = null;
+      sessionStorage.removeItem('tyeb_admin_token');
+      showToast('Logged out of Admin Portal.', 'info');
+      switchView('landing');
+    });
+  }
 
-  document.getElementById('exportCsvBtn').addEventListener('click', () => {
-    if (!state.adminToken) return;
-    window.location.href = `/api/admin/export-csv?token=${encodeURIComponent(state.adminToken)}`;
-  });
+  const exportBtn = document.getElementById('exportCsvBtn');
+  if (exportBtn) {
+    exportBtn.addEventListener('click', () => {
+      if (!state.adminToken) return;
+      window.location.href = `/api/admin/export-csv?token=${encodeURIComponent(state.adminToken)}`;
+    });
+  }
 
   // Filters
   const searchInput = document.getElementById('adminSearchInput');
@@ -983,24 +1035,39 @@ function setupAdminPortal() {
   const scoreFilter = document.getElementById('adminScoreFilter');
 
   let debounceTimer;
-  searchInput.addEventListener('input', () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(loadAdminParticipants, 300);
-  });
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(loadAdminParticipants, 300);
+    });
+  }
 
-  branchFilter.addEventListener('change', loadAdminParticipants);
-  statusFilter.addEventListener('change', loadAdminParticipants);
-  scoreFilter.addEventListener('change', loadAdminParticipants);
+  [branchFilter, statusFilter, scoreFilter].forEach(filter => {
+    if (filter) filter.addEventListener('change', loadAdminParticipants);
+  });
 
   // Participant Detail Modal Close
-  document.getElementById('closeDetailModalBtn').addEventListener('click', () => {
-    document.getElementById('participantDetailModal').classList.remove('active');
-  });
+  const closeDetailBtn = document.getElementById('closeDetailModalBtn');
+  const detailModal = document.getElementById('participantDetailModal');
+  if (closeDetailBtn && detailModal) {
+    closeDetailBtn.addEventListener('click', () => {
+      detailModal.classList.remove('active');
+    });
+  }
+  if (detailModal) {
+    detailModal.addEventListener('click', (e) => {
+      if (e.target === detailModal) {
+        detailModal.classList.remove('active');
+      }
+    });
+  }
 }
 
 async function loadAdminDashboard() {
-  if (!state.adminToken) return;
-  switchView('admin');
+  if (!state.adminToken) {
+    document.getElementById('adminLoginModal')?.classList.add('active');
+    return;
+  }
 
   try {
     // 1. Fetch Stats
@@ -1012,9 +1079,12 @@ async function loadAdminDashboard() {
     if (statsRes.status === 401) {
       state.adminToken = null;
       sessionStorage.removeItem('tyeb_admin_token');
-      document.getElementById('adminLoginModal').classList.add('active');
+      showToast('Session expired. Please log in again.', 'warning');
+      document.getElementById('adminLoginModal')?.classList.add('active');
       return;
     }
+
+    switchView('admin');
 
     if (statsData.success) {
       renderAdminStats(statsData.analytics);
@@ -1245,19 +1315,42 @@ function setupSoundToggle() {
 
 // Main Bootstrapping
 window.addEventListener('DOMContentLoaded', () => {
-  initCircuitBackground();
-  setupRegistration();
-  setupQuizControls();
-  setupResultsActions();
-  setupAdminPortal();
-  setupSoundToggle();
+  try { initCircuitBackground(); } catch (e) { console.warn('Circuit canvas error:', e); }
+  try { setupRegistration(); } catch (e) { console.error('Registration error:', e); }
+  try { setupQuizControls(); } catch (e) { console.error('Quiz controls error:', e); }
+  try { setupResultsActions(); } catch (e) { console.error('Results actions error:', e); }
+  try { setupAdminPortal(); } catch (e) { console.error('Admin portal error:', e); }
+  try { setupSoundToggle(); } catch (e) { console.error('Sound toggle error:', e); }
 
-  // If URL has #admin, navigate to admin
-  if (window.location.hash === '#admin') {
-    if (state.adminToken) {
-      loadAdminDashboard();
-    } else {
-      document.getElementById('adminLoginModal').classList.add('active');
+  // Admin Hotkey support (Alt+A or Ctrl+Shift+A)
+  window.addEventListener('keydown', (e) => {
+    if ((e.altKey && (e.key === 'a' || e.key === 'A')) || (e.ctrlKey && e.shiftKey && (e.key === 'a' || e.key === 'A'))) {
+      e.preventDefault();
+      if (state.adminToken) {
+        loadAdminDashboard();
+      } else {
+        const modal = document.getElementById('adminLoginModal');
+        modal?.classList.add('active');
+        const pw = document.getElementById('adminPasswordInput');
+        if (pw) { pw.value = ''; setTimeout(() => pw.focus(), 60); }
+      }
     }
-  }
+  });
+
+  // Direct URL Hash Routing (#admin)
+  const handleAdminHash = () => {
+    if (window.location.hash === '#admin') {
+      if (state.adminToken) {
+        loadAdminDashboard();
+      } else {
+        const modal = document.getElementById('adminLoginModal');
+        modal?.classList.add('active');
+        const pw = document.getElementById('adminPasswordInput');
+        if (pw) { pw.value = ''; setTimeout(() => pw.focus(), 60); }
+      }
+    }
+  };
+
+  handleAdminHash();
+  window.addEventListener('hashchange', handleAdminHash);
 });
