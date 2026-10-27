@@ -178,7 +178,7 @@ test-your-engineering-brain/
    SMTP_PORT=587
    SMTP_USER=your_email@gmail.com
    SMTP_PASS=your_app_password
-   FROM_EMAIL=mgr.iei.chapter@drmgrdu.ac.in
+   FROM_EMAIL=iei@drmgrdu.ac.in
    FROM_NAME="MGR IEI Students Chapter"
    ```
    *(Note: The application will run smoothly in simulation/standby mode even if email credentials are left as defaults).*
@@ -222,7 +222,7 @@ The codebase is pre-configured for one-click deployment on **Vercel**:
 3. In **Environment Variables**, add:
    * `ADMIN_PASSWORD` = Your desired administrator password
    * `RESEND_API_KEY` = Your Resend API key (or SMTP credentials)
-   * `FROM_EMAIL` = `mgr.iei.chapter@drmgrdu.ac.in`
+   * `FROM_EMAIL` = `iei@drmgrdu.ac.in`
    * `FROM_NAME` = `MGR IEI Students Chapter`
 4. Click **Deploy**. Vercel will automatically build the project and serve both the static frontend and serverless API endpoints via `vercel.json`.
 

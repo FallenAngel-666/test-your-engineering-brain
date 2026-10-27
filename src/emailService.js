@@ -17,7 +17,7 @@ function getEmailProviderConfig() {
   const smtpUser = process.env.SMTP_USER;
   const smtpPass = process.env.SMTP_PASS;
   const smtpPort = process.env.SMTP_PORT || 587;
-  const fromEmail = process.env.FROM_EMAIL || 'mgr.iei.chapter@drmgrdu.ac.in';
+  const fromEmail = process.env.FROM_EMAIL || 'iei@drmgrdu.ac.in';
   const fromName = process.env.FROM_NAME || 'MGR IEI Students Chapter';
 
   const isResendConfigured = Boolean(resendApiKey && resendApiKey !== 'your_resend_api_key_here');

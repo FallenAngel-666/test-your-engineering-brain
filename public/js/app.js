@@ -775,7 +775,7 @@ function setupResultsActions() {
     modalContent.innerHTML = `
       <div style="background:#091224; border:1px solid var(--border-subtle); border-radius:8px; padding:16px; font-size:13px;">
         <p><strong>To:</strong> ${p.email}</p>
-        <p><strong>From:</strong> MGR IEI Students Chapter &lt;mgr.iei.chapter@drmgrdu.ac.in&gt;</p>
+        <p><strong>From:</strong> MGR IEI Students Chapter &lt;iei@drmgrdu.ac.in&gt;</p>
         <p><strong>Subject:</strong> Your Test Your Engineering Brain E-Certificate</p>
         <p><strong>Attachment:</strong> 📎 Your_Engineering_Brain_Certificate_${cert.certificateId}.pdf</p>
         <hr style="border:none; border-top:1px solid var(--border-subtle); margin:12px 0;">
