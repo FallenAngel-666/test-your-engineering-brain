@@ -58,8 +58,8 @@ async function testHttpEndpoints() {
       participantId: regData.participant.participantId,
       attemptId: regData.attempt.attemptId,
       answers: {
-        1: 'B', 2: 'C', 3: 'B', 4: 'C', 5: 'B',
-        6: 'C', 7: 'B', 8: 'B', 9: 'C', 10: 'B'
+        1: 'A', 2: 'B', 3: 'B', 4: 'A', 5: 'C',
+        6: 'B', 7: 'B', 8: 'A', 9: 'C', 10: 'B'
       }
     })
   });

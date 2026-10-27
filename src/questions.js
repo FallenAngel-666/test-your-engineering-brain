@@ -1,149 +1,149 @@
 /**
  * TEST YOUR ENGINEERING BRAIN - Official Question Bank
- * Curated for undergraduate engineering students across diverse disciplines.
- * Contains 10 challenging, balanced questions covering core engineering disciplines.
+ * Curated for MGR IEI Students Chapter Technical Quiz Challenge.
+ * Contains 10 multiple-choice questions covering core engineering, technology, and foundational science.
  */
 
 const questions = [
   {
     id: 1,
     category: "Computer Science and Programming",
-    difficulty: "Medium",
-    question: "What is the worst-case time complexity of finding an element in a balanced Binary Search Tree (such as an AVL or Red-Black Tree) with N nodes?",
+    difficulty: "Easy",
+    question: "Which of the following is a basic programming language?",
     options: {
-      A: "O(1)",
-      B: "O(log N)",
-      C: "O(N)",
-      D: "O(N log N)"
+      A: "Python",
+      B: "HTML",
+      C: "CSS",
+      D: "SQL"
     },
-    correctOption: "B",
-    explanation: "In a self-balancing binary search tree (like AVL or Red-Black trees), the height of the tree is strictly maintained at O(log N). Therefore, search, insertion, and deletion operations all take O(log N) time in both average and worst cases."
+    correctOption: "A",
+    explanation: "Python is a high-level, versatile programming language. HTML and CSS are markup and stylesheet languages for web design, while SQL is a domain-specific query language for relational databases."
   },
   {
     id: 2,
-    category: "Electrical and Electronics Engineering",
-    difficulty: "Medium",
-    question: "According to the Maximum Power Transfer Theorem, maximum power is delivered from a source with internal resistance Rs to a load resistance RL when:",
+    category: "Physics and Engineering Mechanics",
+    difficulty: "Easy",
+    question: "What is the SI unit of force?",
     options: {
-      A: "RL = 0 (Short circuit)",
-      B: "RL = ∞ (Open circuit)",
-      C: "RL = Rs",
-      D: "RL = 0.5 × Rs"
+      A: "Joule",
+      B: "Newton",
+      C: "Watt",
+      D: "Pascal"
     },
-    correctOption: "C",
-    explanation: "The Maximum Power Transfer Theorem states that maximum DC power is transferred from a source network to a resistive load when the load resistance equals the Thévenin equivalent resistance of the source (RL = Rs). For AC circuits with impedances, ZL must equal the complex conjugate of Zs."
+    correctOption: "B",
+    explanation: "The SI unit of force is the Newton (N), defined as the force needed to accelerate 1 kilogram of mass at the rate of 1 meter per second squared (1 N = 1 kg·m/s²)."
   },
   {
     id: 3,
-    category: "Mechanical Engineering",
-    difficulty: "Medium",
-    question: "A Carnot heat engine operates between a heat source at 600 K and a heat sink at 300 K. What is the maximum theoretical thermal efficiency of this engine?",
+    category: "Electrical and Electronics Engineering",
+    difficulty: "Easy",
+    question: "Which component is used to store electrical energy?",
     options: {
-      A: "25%",
-      B: "50%",
-      C: "75%",
-      D: "100%"
+      A: "Resistor",
+      B: "Capacitor",
+      C: "Switch",
+      D: "Fuse"
     },
     correctOption: "B",
-    explanation: "Carnot efficiency is defined as η = 1 - (T_cold / T_hot). Substituting the absolute temperatures: η = 1 - (300 K / 600 K) = 1 - 0.5 = 0.5, or 50%."
+    explanation: "A capacitor stores electrical energy in an electrostatic field between two conductive plates. Resistors oppose current flow and dissipate heat, while switches control circuit continuity."
   },
   {
     id: 4,
-    category: "Civil Engineering",
+    category: "Computer Science and Systems",
     difficulty: "Easy",
-    question: "For a simply supported beam of length L carrying a uniformly distributed load (UDL) of intensity 'w' per unit length across its entire span, what is the maximum bending moment occurring at the midspan?",
+    question: "What does CPU stand for?",
     options: {
-      A: "wL / 2",
-      B: "wL² / 4",
-      C: "wL² / 8",
-      D: "wL² / 12"
+      A: "Central Processing Unit",
+      B: "Computer Power Unit",
+      C: "Central Program Utility",
+      D: "Control Processing User"
     },
-    correctOption: "C",
-    explanation: "For a simply supported beam carrying a UDL of w over length L, the support reactions are wL/2. The bending moment at midspan (x = L/2) is M = (wL/2)(L/2) - w(L/2)(L/4) = wL²/4 - wL²/8 = wL²/8."
+    correctOption: "A",
+    explanation: "CPU stands for Central Processing Unit. It is the primary hardware component that interprets, processes, and executes instructions in modern computers."
   },
   {
     id: 5,
-    category: "Engineering Mathematics and Physics",
-    difficulty: "Challenging",
-    question: "For any square matrix A, what is the relationship between the sum of its eigenvalues and the elements of the matrix?",
+    category: "General Engineering and Energy",
+    difficulty: "Easy",
+    question: "Which of the following is a renewable energy source?",
     options: {
-      A: "Sum of eigenvalues equals the determinant of A",
-      B: "Sum of eigenvalues equals the trace of A (sum of main diagonal elements)",
-      C: "Sum of eigenvalues equals the rank of A",
-      D: "Sum of eigenvalues is always equal to 1"
+      A: "Coal",
+      B: "Petrol",
+      C: "Solar energy",
+      D: "Diesel"
     },
-    correctOption: "B",
-    explanation: "A fundamental linear algebra theorem states that the sum of the eigenvalues of a matrix is equal to the trace of the matrix (the sum of the elements on its main diagonal), while the product of the eigenvalues is equal to its determinant."
+    correctOption: "C",
+    explanation: "Solar energy is a clean, infinitely replenishing renewable energy source harnessed directly from solar radiation. Coal, petrol, and diesel are finite fossil fuels."
   },
   {
     id: 6,
-    category: "Artificial Intelligence and Emerging Technologies",
-    difficulty: "Medium",
-    question: "In deep artificial neural networks, which activation function was introduced primarily to mitigate the vanishing gradient problem during backpropagation?",
+    category: "Engineering Mathematics",
+    difficulty: "Easy",
+    question: "What is the value of π (pi), approximately?",
     options: {
-      A: "Sigmoid (Logistic)",
-      B: "Hyperbolic Tangent (tanh)",
-      C: "Rectified Linear Unit (ReLU)",
-      D: "Binary Step Function"
+      A: "2.14",
+      B: "3.14",
+      C: "4.13",
+      D: "1.34"
     },
-    correctOption: "C",
-    explanation: "The Rectified Linear Unit (ReLU), defined as f(x) = max(0, x), has a constant derivative of 1 for all positive inputs. Unlike sigmoid and tanh, whose derivatives saturate towards zero for large inputs, ReLU prevents the vanishing gradient problem and accelerates gradient descent convergence."
+    correctOption: "B",
+    explanation: "The mathematical constant π (pi) represents the ratio of any circle's circumference to its diameter and is approximately equal to 3.14159 (or 22/7)."
   },
   {
     id: 7,
-    category: "General Engineering Knowledge",
+    category: "Electrical and Mechanical Engineering",
     difficulty: "Easy",
-    question: "In fluid mechanics, what dimensionless quantity is used to predict whether fluid flow in a pipe will be laminar or turbulent?",
+    question: "Which device converts electrical energy into mechanical energy?",
     options: {
-      A: "Mach Number",
-      B: "Reynolds Number",
-      C: "Froude Number",
-      D: "Nusselt Number"
+      A: "Generator",
+      B: "Electric motor",
+      C: "Transformer",
+      D: "Battery"
     },
     correctOption: "B",
-    explanation: "The Reynolds number (Re = ρvD/μ) represents the ratio of inertial forces to viscous forces in a fluid. In circular pipe flow, flow is generally laminar for Re < 2000, transitional between 2000 and 4000, and turbulent for Re > 4000."
+    explanation: "An electric motor uses magnetic and electrical interactions to produce mechanical rotational force. Conversely, an electrical generator converts mechanical work into electricity."
   },
   {
     id: 8,
-    category: "Computer Networks and Systems",
-    difficulty: "Medium",
-    question: "At which layer of the standard ISO-OSI 7-layer reference model do routers primarily operate to direct packets between different networks?",
+    category: "Information Technology and Web Development",
+    difficulty: "Easy",
+    question: "Which of the following is used to create web pages?",
     options: {
-      A: "Data Link Layer (Layer 2)",
-      B: "Network Layer (Layer 3)",
-      C: "Transport Layer (Layer 4)",
-      D: "Session Layer (Layer 5)"
+      A: "HTML",
+      B: "Excel",
+      C: "PowerPoint",
+      D: "Photoshop"
     },
-    correctOption: "B",
-    explanation: "Routers operate at the Network Layer (Layer 3) of the OSI model. They inspect IP addresses in packet headers and use routing tables and protocols (such as OSPF and BGP) to forward data across interconnected networks."
+    correctOption: "A",
+    explanation: "HTML (HyperText Markup Language) is the core foundational markup language interpreted by web browsers to build and structure web pages on the Internet."
   },
   {
     id: 9,
-    category: "Electronics and Microcontrollers",
-    difficulty: "Medium",
-    question: "In digital electronics, what is the minimum clock frequency required to reliably sample an analog band-limited signal containing frequencies up to 20 kHz without aliasing?",
+    category: "Engineering Chemistry and Science",
+    difficulty: "Easy",
+    question: "What is the chemical formula of water?",
     options: {
-      A: "10 kHz",
-      B: "20 kHz",
-      C: "40 kHz",
-      D: "80 kHz"
+      A: "CO₂",
+      B: "O₂",
+      C: "H₂O",
+      D: "NaCl"
     },
     correctOption: "C",
-    explanation: "According to the Nyquist-Shannon Sampling Theorem, to accurately reconstruct a continuous signal without aliasing, the sampling frequency fs must be at least twice the maximum frequency component present in the signal (fs ≥ 2 × f_max). For 20 kHz, fs ≥ 40 kHz."
+    explanation: "Water is composed of two hydrogen atoms bonded to a single oxygen atom, represented by the chemical formula H₂O."
   },
   {
     id: 10,
-    category: "Materials Science and Mechanics",
-    difficulty: "Challenging",
-    question: "On an engineering tensile stress-strain curve for a ductile material like mild steel, what is the point beyond which permanent (plastic) deformation occurs?",
+    category: "Civil Engineering",
+    difficulty: "Easy",
+    question: "Which engineering branch mainly deals with the design and construction of buildings and bridges?",
     options: {
-      A: "Proportional Limit",
-      B: "Yield Point (Elastic Limit)",
-      C: "Ultimate Tensile Strength (UTS)",
-      D: "Fracture Point"
+      A: "Mechanical Engineering",
+      B: "Civil Engineering",
+      C: "Computer Science Engineering",
+      D: "Electrical Engineering"
     },
     correctOption: "B",
-    explanation: "Up to the elastic limit (closely corresponding to the yield point), deformation is fully recoverable upon unloading. Once stress exceeds the yield strength, dislocations move permanently through the crystal lattice, causing irreversible plastic deformation."
+    explanation: "Civil Engineering is the foundational discipline dedicated to the planning, structural design, construction, and maintenance of infrastructure like buildings, bridges, roads, and dams."
   }
 ];
 
