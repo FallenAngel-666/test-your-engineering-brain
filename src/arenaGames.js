@@ -653,19 +653,20 @@ function hashString(str = '') {
  * Deterministic: for the same participantId and roundKey, always returns the exact same question
  * with the exact same shuffled options order.
  */
-function getAssignedQuestionForStudent(participantId, roundKey) {
+function getAssignedQuestionForStudent(participantId, roundKey, salt = '') {
   const bank = QUESTION_BANKS[roundKey] || QUESTION_BANKS.circuitMaster;
   const safeId = participantId ? String(participantId) : 'DEFAULT_STUDENT';
   
   // Deterministic question index: 0..9
-  const seed = hashString(`${safeId}:${roundKey}:question`);
+  const seedString = salt ? `${safeId}:${roundKey}:question:${salt}` : `${safeId}:${roundKey}:question`;
+  const seed = hashString(seedString);
   const qIndex = seed % bank.length;
   const rawQ = bank[qIndex];
 
   // Deterministically shuffle the 4 options: A, B, C, D
   const letters = ['A', 'B', 'C', 'D'];
   const shuffledLetters = [...letters];
-  let shuffleSeed = hashString(`${safeId}:${roundKey}:${rawQ.id}:options`);
+  let shuffleSeed = hashString(salt ? `${safeId}:${roundKey}:${rawQ.id}:options:${salt}` : `${safeId}:${roundKey}:${rawQ.id}:options`);
 
   for (let i = shuffledLetters.length - 1; i > 0; i--) {
     const j = (shuffleSeed + i) % (i + 1);
@@ -692,6 +693,26 @@ function getAssignedQuestionForStudent(participantId, roundKey) {
     options: shuffledOptions,
     correctOption: newCorrectOption,
     explanation: rawQ.explanation
+  };
+}
+
+/**
+ * Returns question for a student while avoiding a specific question index (to prevent consecutive student collisions)
+ */
+function getAssignedQuestionWithAvoidance(participantId, roundKey, avoidIndex = -1) {
+  const bank = QUESTION_BANKS[roundKey] || QUESTION_BANKS.circuitMaster;
+  const safeId = participantId ? String(participantId) : 'DEFAULT_STUDENT';
+  let salt = 0;
+  let qIndex = hashString(`${safeId}:${roundKey}:question`) % bank.length;
+
+  while (avoidIndex >= 0 && qIndex === avoidIndex && salt < 10) {
+    salt++;
+    qIndex = hashString(`${safeId}:${roundKey}:question:${salt}`) % bank.length;
+  }
+
+  return {
+    question: getAssignedQuestionForStudent(participantId, roundKey, salt > 0 ? String(salt) : ''),
+    index: qIndex
   };
 }
 
@@ -900,6 +921,7 @@ module.exports = {
   QUESTION_BANKS,
   hashString,
   getAssignedQuestionForStudent,
+  getAssignedQuestionWithAvoidance,
   generateAssignedQuestions,
   sanitizeAssignedQuestions,
   getSanitizedArenaConfig,

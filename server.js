@@ -146,7 +146,9 @@ app.post('/api/register', (req, res) => {
       attempt: {
         attemptId: attempt.attemptId,
         status: attempt.status,
-        startedAt: attempt.startedAt
+        startedAt: attempt.startedAt,
+        levels: attempt.levels,
+        currentUnlockedLevel: attempt.currentUnlockedLevel
       }
     });
   } catch (err) {

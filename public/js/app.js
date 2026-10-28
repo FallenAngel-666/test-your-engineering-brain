@@ -250,10 +250,20 @@ function showToast(message, type = 'info') {
   const container = document.getElementById('toastContainer');
   if (!container) return;
 
+  const cleanMsg = (message || '').trim();
+  if (!cleanMsg) return;
+
+  // Deduplication: prevent stacking identical messages currently visible
+  const existingToasts = Array.from(container.querySelectorAll('.toast'));
+  const isDuplicate = existingToasts.some(t => {
+    return t.textContent && t.textContent.includes(cleanMsg);
+  });
+  if (isDuplicate) return;
+
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
   const icon = type === 'success' ? '✅' : type === 'error' ? '⚠️' : 'ℹ️';
-  toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
+  toast.innerHTML = `<span>${icon}</span> <span>${cleanMsg}</span>`;
   container.appendChild(toast);
 
   setTimeout(() => {
@@ -563,7 +573,7 @@ function updateArenaHubUI() {
 
   mapping.forEach(m => {
     const lvl = levels[m.key] || {};
-    const isUnlocked = m.key === 'circuitMaster' ? true : Boolean(lvl.unlocked);
+    const isUnlocked = isLevelUnlockedClient(m.key);
     const isComp = Boolean(lvl.completed || lvl.status === 'Completed');
     const score = Number(lvl.score || 0);
 
@@ -700,6 +710,46 @@ function updateArenaHubUI() {
   }
 }
 
+function isLevelUnlockedClient(levelKey) {
+  if (levelKey === 'circuitMaster') return true;
+  const levels = state.arena.levels || {};
+
+  let storedLevels = {};
+  try {
+    const stored = JSON.parse(sessionStorage.getItem('tyeb_attempt') || 'null') ||
+                   JSON.parse(localStorage.getItem('tyeb_attempt') || 'null');
+    if (stored && stored.levels) storedLevels = stored.levels;
+  } catch (e) {}
+
+  const isDone = (k) => {
+    const lvl = levels[k] || {};
+    const sl = storedLevels[k] || {};
+    return Boolean(lvl.completed || lvl.status === 'Completed' || sl.completed || sl.status === 'Completed');
+  };
+
+  const cDone = isDone('circuitMaster');
+  const sDone = isDone('spinArena');
+  const bDone = isDone('buildZone');
+
+  const directUnlocked = Boolean(
+    levels[levelKey]?.unlocked ||
+    storedLevels[levelKey]?.unlocked ||
+    state.arena.currentUnlockedLevel === levelKey
+  );
+
+  if (levelKey === 'spinArena') {
+    return cDone || directUnlocked;
+  }
+  if (levelKey === 'buildZone') {
+    return (cDone && sDone) || directUnlocked;
+  }
+  if (levelKey === 'escapeRoom') {
+    return (cDone && sDone && bDone) || directUnlocked;
+  }
+
+  return false;
+}
+
 async function navigateToArenaLevel(levelKey) {
   AudioFX.playClick();
   const attempt = state.attempt ||
@@ -712,15 +762,18 @@ async function navigateToArenaLevel(levelKey) {
     return;
   }
 
-  // Check unlocking status
-  const lvl = state.arena.levels[levelKey] || {};
-  const isUnlocked = levelKey === 'circuitMaster' ? true : Boolean(lvl.unlocked);
+  // Check unlocking status with client & session validation
+  const isUnlocked = isLevelUnlockedClient(levelKey);
 
   if (!isUnlocked) {
     AudioFX.playClick();
     showToast('🔒 This level is locked. Complete the previous level in sequence first!', 'warning');
     return;
   }
+
+  // Ensure state tracks unlocked status
+  if (!state.arena.levels[levelKey]) state.arena.levels[levelKey] = {};
+  state.arena.levels[levelKey].unlocked = true;
 
   switchView(levelKeyToView(levelKey));
   await loadAndStartLevel(levelKey);
@@ -1060,12 +1113,39 @@ function startLevelQuestionRunner(levelKey, questions = [], existingAnswers = {}
           };
         }
 
-        // Update local state and hub
-        if (state.arena.levels[levelKey]) {
-          state.arena.levels[levelKey].completed = true;
-          state.arena.levels[levelKey].score = 100;
+        // Update local state and hub immediately and synchronously
+        if (!state.arena.levels[levelKey]) state.arena.levels[levelKey] = {};
+        state.arena.levels[levelKey].completed = true;
+        state.arena.levels[levelKey].status = 'Completed';
+        state.arena.levels[levelKey].score = 100;
+
+        const nextMap = { circuitMaster: 'spinArena', spinArena: 'buildZone', buildZone: 'escapeRoom' };
+        const nextK = nextMap[levelKey];
+        if (nextK) {
+          if (!state.arena.levels[nextK]) state.arena.levels[nextK] = {};
+          state.arena.levels[nextK].unlocked = true;
+          state.arena.currentUnlockedLevel = nextK;
         }
-        await refreshArenaStatus();
+
+        // Persist synchronously to storage
+        try {
+          const cur = JSON.parse(sessionStorage.getItem('tyeb_attempt') || '{}');
+          if (!cur.levels) cur.levels = {};
+          if (!cur.levels[levelKey]) cur.levels[levelKey] = {};
+          cur.levels[levelKey].completed = true;
+          cur.levels[levelKey].status = 'Completed';
+          cur.levels[levelKey].score = 100;
+          if (nextK) {
+            if (!cur.levels[nextK]) cur.levels[nextK] = {};
+            cur.levels[nextK].unlocked = true;
+            cur.currentUnlockedLevel = nextK;
+          }
+          sessionStorage.setItem('tyeb_attempt', JSON.stringify(cur));
+          localStorage.setItem('tyeb_attempt', JSON.stringify(cur));
+        } catch (e) {}
+
+        updateArenaHubUI();
+        refreshArenaStatus().catch(() => {});
       } catch (err) {
         showToast(err.message, 'error');
         submitBtn.disabled = false;
@@ -1105,8 +1185,22 @@ function startLevelQuestionRunner(levelKey, questions = [], existingAnswers = {}
 
       if (runnerCard) runnerCard.style.display = 'none';
 
+      if (!state.arena.levels[key]) state.arena.levels[key] = {};
+      state.arena.levels[key].completed = true;
+      state.arena.levels[key].status = 'Completed';
+      state.arena.levels[key].score = 100;
+
+      const nextMap = { circuitMaster: 'spinArena', spinArena: 'buildZone', buildZone: 'escapeRoom' };
+      const nextK = nextMap[key];
+      if (nextK) {
+        if (!state.arena.levels[nextK]) state.arena.levels[nextK] = {};
+        state.arena.levels[nextK].unlocked = true;
+        state.arena.currentUnlockedLevel = nextK;
+      }
+
       showLevelCompletedCard(key, data);
-      await refreshArenaStatus();
+      updateArenaHubUI();
+      refreshArenaStatus().catch(() => {});
     } catch (err) {
       showToast(err.message, 'error');
     }
@@ -1131,6 +1225,12 @@ function showLevelCompletedCard(levelKey, data = {}) {
   const hudScoreEl = document.getElementById(`hud${viewPrefix.toUpperCase()}Score`);
   if (hudScoreEl) hudScoreEl.textContent = `Score: ${score} / 100`;
 
+  // Ensure state tracks completion and next level unlock immediately
+  if (!state.arena.levels[levelKey]) state.arena.levels[levelKey] = {};
+  state.arena.levels[levelKey].completed = true;
+  state.arena.levels[levelKey].status = 'Completed';
+  state.arena.levels[levelKey].score = score;
+
   successCard.style.display = 'block';
 
   // Setup Next Level buttons
@@ -1140,12 +1240,25 @@ function showLevelCompletedCard(levelKey, data = {}) {
     buildZone: { btnId: 'btnL3NextLevel', targetKey: 'escapeRoom' }
   };
 
+  const nextTarget = nextBtnMapping[levelKey]?.targetKey;
+  if (nextTarget) {
+    if (!state.arena.levels[nextTarget]) state.arena.levels[nextTarget] = {};
+    state.arena.levels[nextTarget].unlocked = true;
+    state.arena.currentUnlockedLevel = nextTarget;
+  }
+
   if (nextBtnMapping[levelKey]) {
     const btn = document.getElementById(nextBtnMapping[levelKey].btnId);
     if (btn) {
-      btn.onclick = () => {
+      btn.onclick = (e) => {
+        if (e) { e.preventDefault(); e.stopPropagation(); }
         AudioFX.playClick();
-        navigateToArenaLevel(nextBtnMapping[levelKey].targetKey);
+        const target = nextBtnMapping[levelKey].targetKey;
+        if (target) {
+          if (!state.arena.levels[target]) state.arena.levels[target] = {};
+          state.arena.levels[target].unlocked = true;
+        }
+        navigateToArenaLevel(target);
       };
     }
   }

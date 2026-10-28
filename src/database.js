@@ -11,6 +11,7 @@ const {
   QUESTIONS_PER_ROUND,
   LEVEL_ORDER,
   LEVEL_METADATA,
+  getAssignedQuestionWithAvoidance,
   generateAssignedQuestions,
   sanitizeAssignedQuestions,
   isLevelUnlocked,
@@ -197,6 +198,26 @@ function createQuizAttempt(participantId, existingAttemptId) {
   const attemptId = existingAttemptId || generateId('ATT');
   const now = new Date().toISOString();
 
+  db.lastAssignedIndices = db.lastAssignedIndices || {
+    circuitMaster: -1,
+    spinArena: -1,
+    buildZone: -1,
+    escapeRoom: -1
+  };
+
+  const seedId = participantId || attemptId;
+  const q1Res = getAssignedQuestionWithAvoidance(seedId, 'circuitMaster', db.lastAssignedIndices.circuitMaster);
+  db.lastAssignedIndices.circuitMaster = q1Res.index;
+
+  const q2Res = getAssignedQuestionWithAvoidance(seedId, 'spinArena', db.lastAssignedIndices.spinArena);
+  db.lastAssignedIndices.spinArena = q2Res.index;
+
+  const q3Res = getAssignedQuestionWithAvoidance(seedId, 'buildZone', db.lastAssignedIndices.buildZone);
+  db.lastAssignedIndices.buildZone = q3Res.index;
+
+  const q4Res = getAssignedQuestionWithAvoidance(seedId, 'escapeRoom', db.lastAssignedIndices.escapeRoom);
+  db.lastAssignedIndices.escapeRoom = q4Res.index;
+
   const attempt = {
     attemptId,
     participantId,
@@ -205,13 +226,19 @@ function createQuizAttempt(participantId, existingAttemptId) {
     completedAt: null,
     // Engineering Arena Sequential 4-Round Progress
     currentUnlockedLevel: 'circuitMaster',
+    assignedQuestionIds: {
+      circuitMaster: q1Res.question.id,
+      spinArena: q2Res.question.id,
+      buildZone: q3Res.question.id,
+      escapeRoom: q4Res.question.id
+    },
     levels: {
       circuitMaster: {
         status: 'In Progress',
         unlocked: true,
         completed: false,
         interactiveCompleted: false,
-        assignedQuestions: [], // Populated deterministically per student ID
+        assignedQuestions: [q1Res.question],
         answers: {},
         score: 0,
         maxScore: 100,
@@ -222,7 +249,7 @@ function createQuizAttempt(participantId, existingAttemptId) {
         unlocked: false,
         completed: false,
         interactiveCompleted: false,
-        assignedQuestions: [],
+        assignedQuestions: [q2Res.question],
         answers: {},
         score: 0,
         maxScore: 100,
@@ -233,7 +260,7 @@ function createQuizAttempt(participantId, existingAttemptId) {
         unlocked: false,
         completed: false,
         interactiveCompleted: false,
-        assignedQuestions: [],
+        assignedQuestions: [q3Res.question],
         answers: {},
         score: 0,
         maxScore: 100,
@@ -244,7 +271,7 @@ function createQuizAttempt(participantId, existingAttemptId) {
         unlocked: false,
         completed: false,
         interactiveCompleted: false,
-        assignedQuestions: [],
+        assignedQuestions: [q4Res.question],
         answers: {},
         score: 0,
         maxScore: 100,
@@ -377,6 +404,29 @@ function ensureAttemptLevels(attempt) {
       }
     };
   }
+
+  // Ensure each level has assignedQuestions populated
+  if (!attempt.assignedQuestionIds) attempt.assignedQuestionIds = {};
+  LEVEL_ORDER.forEach(key => {
+    if (!attempt.levels[key]) {
+      attempt.levels[key] = {
+        status: key === 'circuitMaster' ? 'In Progress' : 'Not Started',
+        unlocked: key === 'circuitMaster',
+        completed: false,
+        interactiveCompleted: false,
+        assignedQuestions: [],
+        answers: {},
+        score: 0,
+        maxScore: 100,
+        completedAt: null
+      };
+    }
+    if (!attempt.levels[key].assignedQuestions || attempt.levels[key].assignedQuestions.length === 0) {
+      const qRes = getAssignedQuestionWithAvoidance(attempt.participantId || attempt.attemptId, key);
+      attempt.levels[key].assignedQuestions = [qRes.question];
+      attempt.assignedQuestionIds[key] = qRes.question.id;
+    }
+  });
 
   // Sync unlocked states according to sequential rules
   attempt.levels.circuitMaster.unlocked = true;
