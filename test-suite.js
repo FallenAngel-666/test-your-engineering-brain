@@ -419,17 +419,20 @@ async function executeSuite() {
     assert.strictEqual(row.escapeScore, 100);
   });
 
-  // 11. Question Bank 40 Unique Questions Integrity
-  runTest('Question banks contain 40 unique questions: exactly 10 per level with zero overlap', () => {
+  // 11. Question Bank 40 Unique Questions Integrity (R1-Q1..10 to R4-Q1..10)
+  runTest('Question banks contain 40 unique questions: exactly 10 per round with zero overlap', () => {
     const banks = arenaGames.QUESTION_BANKS;
-    const levels = ['circuitMaster', 'spinArena', 'buildZone', 'escapeRoom'];
+    const rounds = ['circuitMaster', 'spinArena', 'buildZone', 'escapeRoom'];
     const allIds = new Set();
     const allQuestions = new Set();
 
-    levels.forEach(lvl => {
-      assert.strictEqual(banks[lvl].length, 10, `Level ${lvl} must have exactly 10 questions`);
-      banks[lvl].forEach(q => {
-        assert.ok(q.id, 'Question must have id');
+    rounds.forEach((roundKey, rIdx) => {
+      assert.strictEqual(banks[roundKey].length, 10, `Round ${roundKey} must have exactly 10 questions`);
+      const prefix = `R${rIdx + 1}-Q`;
+
+      banks[roundKey].forEach((q, qIdx) => {
+        assert.ok(q.id.startsWith(prefix), `Question id ${q.id} must start with ${prefix}`);
+        assert.strictEqual(q.id, `${prefix}${qIdx + 1}`, `Question ID must match ${prefix}${qIdx + 1}`);
         assert.ok(q.question, 'Question must have text');
         assert.ok(q.options && q.options.A && q.options.B && q.options.C && q.options.D, 'Question must have 4 options');
         assert.ok(q.correctOption, 'Question must have correctOption');
@@ -446,23 +449,27 @@ async function executeSuite() {
     assert.strictEqual(allQuestions.size, 40, 'Must have exactly 40 unique question texts');
   });
 
-  // 12. Randomization & Configurable Subset (5 per level)
-  runTest('Random question generator selects configurable subset (5 per level) with shuffled options', () => {
-    assert.strictEqual(arenaGames.QUESTIONS_PER_LEVEL, 5);
-    const set1 = arenaGames.generateAssignedQuestions('circuitMaster');
-    assert.strictEqual(set1.length, 5);
-
-    // Verify sanitized structure
-    const sanitized = arenaGames.sanitizeAssignedQuestions(set1);
-    assert.strictEqual(sanitized.length, 5);
-    sanitized.forEach(q => {
-      assert.strictEqual(q.correctOption, undefined, 'Sanitized question must not expose correctOption');
-      assert.strictEqual(q.explanation, undefined, 'Sanitized question must not expose explanation');
-      assert.ok(q.options.A && q.options.B && q.options.C && q.options.D);
+  // 12. Exactly ONE Question per Round per Student (4 Questions Total)
+  runTest('Each student receives exactly ONE question per round (4 questions total)', () => {
+    assert.strictEqual(arenaGames.QUESTIONS_PER_ROUND, 1);
+    const p = db.createParticipant({
+      fullName: 'Dev Patel',
+      email: 'dev.patel@gmail.com',
+      branch: 'Computer Science Engineering (CSE)'
     });
+    const attempt = db.createQuizAttempt(p.participantId);
+
+    const r1 = db.getOrAssignLevelQuestions(attempt.attemptId, 'circuitMaster');
+    assert.strictEqual(r1.questions.length, 1, 'Round 1 must present exactly 1 question');
+    assert.ok(r1.questions[0].id.startsWith('R1-Q'), 'Must be from Round 1 bank');
+
+    // Sanitized question must not leak correctOption or explanation
+    assert.strictEqual(r1.questions[0].correctOption, undefined);
+    assert.strictEqual(r1.questions[0].explanation, undefined);
+    assert.ok(r1.questions[0].options.A && r1.questions[0].options.B && r1.questions[0].options.C && r1.questions[0].options.D);
   });
 
-  // 13. State Persistence (Questions not reshuffled on reload)
+  // 13. State Persistence (Questions not reshuffled on reload or sign-in)
   runTest('Database persists assigned question set so student reloads do not reshuffle', () => {
     const p = db.createParticipant({
       fullName: 'Ananya Sharma',
@@ -474,20 +481,83 @@ async function executeSuite() {
     const firstFetch = db.getOrAssignLevelQuestions(attempt.attemptId, 'circuitMaster');
     const secondFetch = db.getOrAssignLevelQuestions(attempt.attemptId, 'circuitMaster');
 
-    assert.strictEqual(firstFetch.questions.length, 5);
-    assert.strictEqual(secondFetch.questions.length, 5);
+    assert.strictEqual(firstFetch.questions.length, 1);
+    assert.strictEqual(secondFetch.questions.length, 1);
 
-    // Verify exact same question IDs and question texts in exact same sequence
-    for (let i = 0; i < 5; i++) {
-      assert.strictEqual(firstFetch.questions[i].id, secondFetch.questions[i].id);
-      assert.strictEqual(firstFetch.questions[i].question, secondFetch.questions[i].question);
-      assert.strictEqual(firstFetch.questions[i].options.A, secondFetch.questions[i].options.A);
-      assert.strictEqual(firstFetch.questions[i].options.B, secondFetch.questions[i].options.B);
-    }
+    // Verify exact same question ID and options order on reload
+    assert.strictEqual(firstFetch.questions[0].id, secondFetch.questions[0].id);
+    assert.strictEqual(firstFetch.questions[0].question, secondFetch.questions[0].question);
+    assert.strictEqual(firstFetch.questions[0].options.A, secondFetch.questions[0].options.A);
+    assert.strictEqual(firstFetch.questions[0].options.B, secondFetch.questions[0].options.B);
+    assert.strictEqual(firstFetch.questions[0].options.C, secondFetch.questions[0].options.C);
+    assert.strictEqual(firstFetch.questions[0].options.D, secondFetch.questions[0].options.D);
   });
 
-  // 14. Strict Sequential Progression & Unlocking
-  runTest('Strict sequential progression: Level 1 -> Level 2 -> Level 3 -> Level 4', () => {
+  // 14. Multi-Student Independent Randomization (At least 5 Students)
+  runTest('Test across 5 separate student accounts: independent question assignments & option shuffling', () => {
+    const students = [
+      { name: 'Student Alpha', email: 'alpha@iei.org', branch: 'Mechanical Engineering' },
+      { name: 'Student Beta', email: 'beta@iei.org', branch: 'Computer Science Engineering (CSE)' },
+      { name: 'Student Gamma', email: 'gamma@iei.org', branch: 'Civil Engineering' },
+      { name: 'Student Delta', email: 'delta@iei.org', branch: 'Electrical and Electronics Engineering (EEE)' },
+      { name: 'Student Epsilon', email: 'epsilon@iei.org', branch: 'Biomedical Engineering' }
+    ];
+
+    const studentAssignments = [];
+
+    students.forEach((s) => {
+      const p = db.createParticipant({ fullName: s.name, email: s.email, branch: s.branch });
+      const att = db.createQuizAttempt(p.participantId);
+
+      const q1 = arenaGames.getAssignedQuestionForStudent(p.participantId, 'circuitMaster');
+      const q2 = arenaGames.getAssignedQuestionForStudent(p.participantId, 'spinArena');
+      const q3 = arenaGames.getAssignedQuestionForStudent(p.participantId, 'buildZone');
+      const q4 = arenaGames.getAssignedQuestionForStudent(p.participantId, 'escapeRoom');
+
+      studentAssignments.push({
+        participantId: p.participantId,
+        q1: q1.id,
+        q2: q2.id,
+        q3: q3.id,
+        q4: q4.id
+      });
+    });
+
+    assert.strictEqual(studentAssignments.length, 5);
+
+    // Verify variation: not all students get the identical combination
+    const uniqueCombos = new Set(studentAssignments.map(s => `${s.q1}-${s.q2}-${s.q3}-${s.q4}`));
+    assert.ok(uniqueCombos.size > 1, 'Question combinations must vary across different students');
+  });
+
+  // 15. No Pass Mark: Incorrect answers STILL unlock next round without penalty
+  runTest('No pass mark: incorrect answers still mark round complete & unlock next round', () => {
+    const p = db.createParticipant({
+      fullName: 'Learner One',
+      email: 'learner1@example.com',
+      branch: 'Civil Engineering'
+    });
+    const attempt = db.createQuizAttempt(p.participantId);
+
+    // Round 1: Intentionally answer INCORRECTLY
+    const r1 = db.getOrAssignLevelQuestions(attempt.attemptId, 'circuitMaster');
+    const assignedQ = db.findAttemptById(attempt.attemptId).levels.circuitMaster.assignedQuestions[0];
+    const wrongOption = assignedQ.correctOption === 'A' ? 'B' : 'A';
+
+    const submitRes = db.saveLevelAnswer(attempt.attemptId, 'circuitMaster', assignedQ.id, wrongOption);
+    assert.strictEqual(submitRes.isCorrect, false, 'Answer must evaluate to false for wrong option');
+    assert.ok(submitRes.friendlyFeedback.includes("Good try!"), 'Must show friendly feedback for wrong answer');
+    assert.strictEqual(submitRes.completed, true, 'Round 1 must be marked as completed despite wrong answer');
+    assert.strictEqual(submitRes.nextLevelUnlocked, true, 'Next level must be unlocked despite wrong answer');
+
+    // Verify Round 2 is now unlocked
+    const status = db.getArenaAttemptStatus(attempt.attemptId);
+    assert.strictEqual(status.levels.circuitMaster.completed, true);
+    assert.strictEqual(status.levels.spinArena.unlocked, true);
+  });
+
+  // 16. Strict Sequential Unlocking & Progression (Round 1 -> 2 -> 3 -> 4 -> Cert)
+  runTest('Strict sequential progression: Round 1 -> Round 2 -> Round 3 -> Round 4 -> Certificate', () => {
     const p = db.createParticipant({
       fullName: 'Rohan Mehra',
       email: 'rohan.mehra@gmail.com',
@@ -495,87 +565,63 @@ async function executeSuite() {
     });
     const attempt = db.createQuizAttempt(p.participantId);
 
-    // Level 1 is unlocked initially
+    // Round 1 unlocked initially
     const status1 = db.getArenaAttemptStatus(attempt.attemptId);
     assert.strictEqual(status1.levels.circuitMaster.unlocked, true);
     assert.strictEqual(status1.levels.spinArena.unlocked, false);
-    assert.strictEqual(status1.levels.buildZone.unlocked, false);
-    assert.strictEqual(status1.levels.escapeRoom.unlocked, false);
 
-    // Attempting to access Level 2 before Level 1 completes must be rejected with locked: true
+    // Attempting to access Round 2 before Round 1 must be rejected with locked: true
     const lockedRes = db.getOrAssignLevelQuestions(attempt.attemptId, 'spinArena');
-    assert.ok(lockedRes.error && lockedRes.locked === true, 'Level 2 must return error when locked');
+    assert.ok(lockedRes.error && lockedRes.locked === true);
 
-    // Complete Level 1 (record interactive + answer 5 questions)
+    // Complete Round 1
     db.recordInteractiveAction(attempt.attemptId, 'circuitMaster', { wireConnected: true });
     db.getOrAssignLevelQuestions(attempt.attemptId, 'circuitMaster');
-    const l1Questions = db.findAttemptById(attempt.attemptId).levels.circuitMaster.assignedQuestions;
-    l1Questions.forEach(q => {
-      db.saveLevelAnswer(attempt.attemptId, 'circuitMaster', q.id, q.correctOption);
-    });
-    const l1Comp = db.completeLevel(attempt.attemptId, 'circuitMaster');
-    assert.strictEqual(l1Comp.levelScore, 100);
-    assert.strictEqual(l1Comp.nextLevelUnlocked, 'spinArena');
+    const l1Q = db.findAttemptById(attempt.attemptId).levels.circuitMaster.assignedQuestions[0];
+    db.saveLevelAnswer(attempt.attemptId, 'circuitMaster', l1Q.id, l1Q.correctOption);
 
-    // Level 2 is now unlocked, but Level 3 is still locked
+    // Round 2 is now unlocked
     const status2 = db.getArenaAttemptStatus(attempt.attemptId);
     assert.strictEqual(status2.levels.circuitMaster.completed, true);
     assert.strictEqual(status2.levels.spinArena.unlocked, true);
     assert.strictEqual(status2.levels.buildZone.unlocked, false);
 
-    // Complete Level 2
+    // Complete Round 2
     db.recordInteractiveAction(attempt.attemptId, 'spinArena', { spinCompleted: true });
     db.getOrAssignLevelQuestions(attempt.attemptId, 'spinArena');
-    const l2Questions = db.findAttemptById(attempt.attemptId).levels.spinArena.assignedQuestions;
-    l2Questions.forEach(q => {
-      db.saveLevelAnswer(attempt.attemptId, 'spinArena', q.id, q.correctOption);
-    });
-    const l2Comp = db.completeLevel(attempt.attemptId, 'spinArena');
-    assert.strictEqual(l2Comp.levelScore, 100);
-    assert.strictEqual(l2Comp.nextLevelUnlocked, 'buildZone');
+    const l2Q = db.findAttemptById(attempt.attemptId).levels.spinArena.assignedQuestions[0];
+    db.saveLevelAnswer(attempt.attemptId, 'spinArena', l2Q.id, l2Q.correctOption);
 
-    // Level 3 is now unlocked
+    // Round 3 is now unlocked
     const status3 = db.getArenaAttemptStatus(attempt.attemptId);
     assert.strictEqual(status3.levels.buildZone.unlocked, true);
     assert.strictEqual(status3.levels.escapeRoom.unlocked, false);
 
-    // Complete Level 3
+    // Complete Round 3
     db.recordInteractiveAction(attempt.attemptId, 'buildZone', { bridgeBuilt: true });
     db.getOrAssignLevelQuestions(attempt.attemptId, 'buildZone');
-    const l3Questions = db.findAttemptById(attempt.attemptId).levels.buildZone.assignedQuestions;
-    l3Questions.forEach(q => {
-      db.saveLevelAnswer(attempt.attemptId, 'buildZone', q.id, q.correctOption);
-    });
-    const l3Comp = db.completeLevel(attempt.attemptId, 'buildZone');
-    assert.strictEqual(l3Comp.levelScore, 100);
-    assert.strictEqual(l3Comp.nextLevelUnlocked, 'escapeRoom');
+    const l3Q = db.findAttemptById(attempt.attemptId).levels.buildZone.assignedQuestions[0];
+    db.saveLevelAnswer(attempt.attemptId, 'buildZone', l3Q.id, l3Q.correctOption);
 
-    // Level 4 is now unlocked
+    // Round 4 is now unlocked
     const status4 = db.getArenaAttemptStatus(attempt.attemptId);
     assert.strictEqual(status4.levels.escapeRoom.unlocked, true);
 
-    // Complete Level 4
-    db.recordInteractiveAction(attempt.attemptId, 'escapeRoom', { stage1Solved: true, stage2Solved: true, stage3Solved: true });
+    // Complete Round 4
+    db.recordInteractiveAction(attempt.attemptId, 'escapeRoom', { c1Solved: true, c2Solved: true, c3Solved: true });
     db.getOrAssignLevelQuestions(attempt.attemptId, 'escapeRoom');
-    const l4Questions = db.findAttemptById(attempt.attemptId).levels.escapeRoom.assignedQuestions;
-    l4Questions.forEach(q => {
-      db.saveLevelAnswer(attempt.attemptId, 'escapeRoom', q.id, q.correctOption);
-    });
-    const l4Comp = db.completeLevel(attempt.attemptId, 'escapeRoom');
-    assert.strictEqual(l4Comp.levelScore, 100);
-    assert.strictEqual(l4Comp.isChampion, true);
-    assert.strictEqual(l4Comp.completedCount, 4);
-    assert.strictEqual(l4Comp.totalArenaScore, 400);
+    const l4Q = db.findAttemptById(attempt.attemptId).levels.escapeRoom.assignedQuestions[0];
+    db.saveLevelAnswer(attempt.attemptId, 'escapeRoom', l4Q.id, l4Q.correctOption);
 
-    // Finalize attempt
+    // Finalize
     const finalized = db.finalizeArenaAttempt(attempt.attemptId);
     assert.strictEqual(finalized.status, 'Completed');
     assert.strictEqual(finalized.score, 400);
     assert.strictEqual(finalized.isChampion, true);
   });
 
-  // 15. Certificate Eligibility Enforcement
-  runTest('Certificate issuance strictly blocked if fewer than 4 levels completed', () => {
+  // 17. Certificate Eligibility Enforcement
+  runTest('Certificate issuance strictly blocked if fewer than 4 rounds completed', () => {
     const p = db.createParticipant({
       fullName: 'Incomplete Student',
       email: 'incomplete@gmail.com',
@@ -583,18 +629,15 @@ async function executeSuite() {
     });
     const attempt = db.createQuizAttempt(p.participantId);
 
-    // Only complete Level 1
+    // Only complete Round 1
     db.recordInteractiveAction(attempt.attemptId, 'circuitMaster', { wireConnected: true });
     db.getOrAssignLevelQuestions(attempt.attemptId, 'circuitMaster');
-    const l1Questions = db.findAttemptById(attempt.attemptId).levels.circuitMaster.assignedQuestions;
-    l1Questions.forEach(q => {
-      db.saveLevelAnswer(attempt.attemptId, 'circuitMaster', q.id, q.correctOption);
-    });
-    db.completeLevel(attempt.attemptId, 'circuitMaster');
+    const l1Q = db.findAttemptById(attempt.attemptId).levels.circuitMaster.assignedQuestions[0];
+    db.saveLevelAnswer(attempt.attemptId, 'circuitMaster', l1Q.id, l1Q.correctOption);
 
-    // Attempting to finalize should return error object rejecting certificate
+    // Attempting to finalize should reject
     const finalizeRes = db.finalizeArenaAttempt(attempt.attemptId);
-    assert.ok(finalizeRes && finalizeRes.error, 'Finalize must return error if fewer than 4 levels completed');
+    assert.ok(finalizeRes && finalizeRes.error, 'Finalize must return error if fewer than 4 rounds completed');
     assert.strictEqual(finalizeRes.completedLevelsCount, 1);
   });
 

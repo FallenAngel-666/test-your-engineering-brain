@@ -1,59 +1,74 @@
 /**
  * ENGINEERING ARENA - Core Game Levels, 40-Question Bank & Randomization Engine
  * 
- * 4 Mandatory Levels with Independent 10-Question Banks:
- * - Level 1: Circuit Master (Electrical & Circuits) - 10 Questions
- * - Level 2: Spin Arena (Multi-Disciplinary Engineering) - 10 Questions
- * - Level 3: Build Zone (Structural Stability & Civil) - 10 Questions
- * - Level 4: Engineering Escape Room (Logic, Hardware & Computing) - 10 Questions
+ * EXACTLY FOUR ROUNDS AND 40 BACKEND QUESTIONS:
+ * - Round 1: Circuit Master (R1-Q1 to R1-Q10) - Beginner-friendly Electrical & Engineering Principles
+ * - Round 2: Spin Arena (R2-Q1 to R2-Q10) - Multi-Disciplinary Engineering matched with Wheel Categories
+ * - Round 3: Build Zone (R3-Q1 to R3-Q10) - Structural Stability, Bridges & Civil Engineering
+ * - Round 4: Engineering Escape Room (R4-Q1 to R4-Q10) - Logic Sequences, Hardware ID & Technical Challenges
  * 
- * Configurable question presentation: QUESTIONS_PER_LEVEL (default 5).
+ * Each student receives exactly ONE randomly assigned question per round (4 questions total).
+ * Questions and option ordering are deterministically randomized per student ID and persisted.
+ * No pass mark: wrong answers never block progression!
  */
 
-const QUESTIONS_PER_LEVEL = 5; // Configurable: number of questions presented to each student per level
+const QUESTIONS_PER_LEVEL = 1; // Exactly 1 question presented per student per round
+const QUESTIONS_PER_ROUND = 1;
 
 const LEVEL_ORDER = ['circuitMaster', 'spinArena', 'buildZone', 'escapeRoom'];
 
 const LEVEL_METADATA = {
   circuitMaster: {
     id: 'circuitMaster',
+    roundKey: 'circuitMaster',
     name: 'Circuit Master',
+    roundTitle: 'Round 1: Circuit Master',
+    roundNumber: 1,
     levelNumber: 1,
     theme: 'Blue & Cyan',
     badge: 'CIRCUIT MASTER',
     icon: '⚡',
     nextLevel: 'spinArena',
-    interactiveTitle: 'Assemble the Electrical Circuit',
+    interactiveTitle: 'Complete the Electrical Circuit',
     interactiveDesc: 'Connect the missing conductor wire across the open terminal gap to complete the circuit and power the filament bulb.'
   },
   spinArena: {
     id: 'spinArena',
+    roundKey: 'spinArena',
     name: 'Spin Arena',
+    roundTitle: 'Round 2: Spin Arena',
+    roundNumber: 2,
     levelNumber: 2,
     theme: 'Purple & Gold',
     badge: 'SPIN ARENA MASTER',
     icon: '🎡',
     nextLevel: 'buildZone',
-    interactiveTitle: 'Engineering Wheel of Fortune',
-    interactiveDesc: 'Click "SPIN THE WHEEL" to spin the category wheel and face high-impact engineering discipline questions.'
+    interactiveTitle: 'Engineering Category Wheel',
+    interactiveDesc: 'Click "SPIN THE WHEEL" to spin the category wheel and reveal your engineering discipline challenge.'
   },
   buildZone: {
     id: 'buildZone',
+    roundKey: 'buildZone',
     name: 'Build Zone',
+    roundTitle: 'Round 3: Build Zone',
+    roundNumber: 3,
     levelNumber: 3,
     theme: 'Green & Teal',
-    badge: 'JUNIOR ENGINEER',
+    badge: 'STRUCTURAL ENGINEER',
     icon: '🌉',
     nextLevel: 'escapeRoom',
     interactiveTitle: 'Bridge Engineering Challenge',
-    interactiveDesc: 'Assemble the structural bridge across the chasm by placing the foundation piers, roadway deck, and suspension arch into their correct slots.'
+    interactiveDesc: 'Assemble the structural bridge across the chasm by placing the foundation piers, roadway deck, and suspension arch into their slots.'
   },
   escapeRoom: {
     id: 'escapeRoom',
+    roundKey: 'escapeRoom',
     name: 'Engineering Escape Room',
+    roundTitle: 'Round 4: Engineering Escape Room',
+    roundNumber: 4,
     levelNumber: 4,
     theme: 'Futuristic Neon',
-    badge: 'ENGINEERING ESCAPE MASTER',
+    badge: 'ESCAPE ROOM CHAMPION',
     icon: '🔐',
     nextLevel: null,
     interactiveTitle: 'Futuristic Research Lab Override',
@@ -62,157 +77,169 @@ const LEVEL_METADATA = {
 };
 
 // ========================================================
-// 10-QUESTION BANKS PER LEVEL (40 UNIQUE QUESTIONS TOTAL)
+// 40 UNIQUE BACKEND QUESTIONS (10 QUESTIONS PER ROUND)
 // ========================================================
 
 const QUESTION_BANKS = {
   // ------------------------------------------------------
-  // LEVEL 1: CIRCUIT MASTER (10 Electrical & Circuit Questions)
+  // ROUND 1: CIRCUIT MASTER (R1-Q1 to R1-Q10)
+  // Beginner-friendly electrical, everyday engineering & components
   // ------------------------------------------------------
   circuitMaster: [
     {
-      id: "cm_q1",
-      question: "What is required for electric current to flow continuously?",
+      id: "R1-Q1",
+      category: "Basic Electrical",
+      question: "In an electric torch or flashlight, what primary function does the switch perform?",
       options: {
-        A: "A complete closed circuit",
-        B: "A broken wire",
-        C: "An open knife switch",
-        D: "An empty battery"
+        A: "It generates electrical voltage chemically",
+        B: "It opens or closes the conductive pathway for current to flow",
+        C: "It converts electrical energy into heat energy",
+        D: "It increases the internal resistance of the battery"
       },
-      correctOption: "A",
-      explanation: "Electric current can only flow through an unbroken, closed conductive pathway connecting the power source to the load."
+      correctOption: "B",
+      explanation: "A switch physically connects (closes) or disconnects (opens) the conductive circuit path to control the flow of electric current."
     },
     {
-      id: "cm_q2",
-      question: "Which fundamental law states that current through a conductor is directly proportional to voltage across it (V = I × R)?",
+      id: "R1-Q2",
+      category: "Circuit Fundamentals",
+      question: "According to Ohm's Law (V = I × R), what happens to the electric current if resistance is doubled while voltage remains constant?",
       options: {
-        A: "Ohm's Law",
-        B: "Faraday's Law of Induction",
-        C: "Newton's Second Law",
-        D: "Coulomb's Law"
+        A: "The current is reduced to half its original value",
+        B: "The current doubles in magnitude",
+        C: "The current quadruples",
+        D: "The current remains completely unchanged"
       },
       correctOption: "A",
-      explanation: "Ohm's Law establishes that current (I) is directly proportional to voltage (V) and inversely proportional to resistance (R)."
+      explanation: "Current is inversely proportional to resistance (I = V / R). Doubling resistance at a fixed voltage cuts the current in half."
     },
     {
-      id: "cm_q3",
-      question: "Which electronic component is primarily used to oppose or limit the flow of electrical current in a circuit?",
+      id: "R1-Q3",
+      category: "Electrical Safety",
+      question: "Which electrical safety device contains a thin metallic wire calibrated to melt and safely interrupt an overloaded circuit?",
       options: {
-        A: "Resistor",
-        B: "Capacitor",
-        C: "Inductor",
-        D: "Diode"
+        A: "Step-up transformer",
+        B: "Electric fuse",
+        C: "Filter capacitor",
+        D: "Wirewound rheostat"
       },
-      correctOption: "A",
-      explanation: "A resistor introduces precise electrical resistance to drop voltage and limit current to safe operating levels."
+      correctOption: "B",
+      explanation: "An electric fuse contains a low-melting-point alloy wire that heats up and melts when current exceeds safe design limits, protecting the circuit."
     },
     {
-      id: "cm_q4",
-      question: "In a series circuit with three identical light bulbs, what happens if one bulb is removed or burns out?",
+      id: "R1-Q4",
+      category: "Materials & Insulation",
+      question: "Which flexible insulating polymer is standardly sheathed around household copper wires to prevent accidental shock?",
       options: {
-        A: "All bulbs turn off because the single current path is interrupted",
-        B: "The remaining two bulbs burn twice as bright",
-        C: "The voltage across the other bulbs increases",
-        D: "Only the damaged bulb turns off"
+        A: "Pure copper foil",
+        B: "Polyvinyl Chloride (PVC)",
+        C: "Cast aluminum",
+        D: "Structural carbon steel"
       },
-      correctOption: "A",
-      explanation: "In a series circuit, current must travel through each component sequentially. Breaking any component opens the entire circuit."
+      correctOption: "B",
+      explanation: "PVC (Polyvinyl Chloride) has very high electrical breakdown strength and flexibility, making it the worldwide standard insulator for cables."
     },
     {
-      id: "cm_q5",
-      question: "What is the standard International System (SI) unit of electrical potential difference (voltage)?",
+      id: "R1-Q5",
+      category: "Circuit Types",
+      question: "Why are household electrical lighting and appliances connected in parallel rather than in a single series loop?",
       options: {
-        A: "Volt (V)",
-        B: "Ampere (A)",
-        C: "Ohm (Ω)",
-        D: "Watt (W)"
+        A: "So every appliance operates at full mains voltage and one turned off does not cut power to others",
+        B: "To force all current through a single shared wire",
+        C: "Because parallel circuits do not require electricity to run",
+        D: "To eliminate the need for an earth ground connection"
       },
       correctOption: "A",
-      explanation: "The Volt (V) is the SI unit of electrical potential difference and electromotive force."
+      explanation: "In parallel circuits, every load receives the same supply voltage and can be switched on or off independently without interrupting other devices."
     },
     {
-      id: "cm_q6",
-      question: "Which protective device automatically interrupts current flow when an unsafe overcurrent or short circuit is detected?",
+      id: "R1-Q6",
+      category: "Units & Measurements",
+      question: "What is the standard International System (SI) unit used to measure electrical potential difference?",
       options: {
-        A: "Circuit breaker or fuse",
-        B: "Step-up transformer",
-        C: "Electrolytic capacitor",
-        D: "Potentiometer"
+        A: "Ampere (A)",
+        B: "Volt (V)",
+        C: "Watt (W)",
+        D: "Ohm (Ω)"
       },
-      correctOption: "A",
-      explanation: "Circuit breakers and fuses protect circuits by interrupting excessive current before wiring overheats and causes a fire."
+      correctOption: "B",
+      explanation: "The Volt (V) is the SI unit of electric potential difference, named in honor of Italian physicist Alessandro Volta."
     },
     {
-      id: "cm_q7",
-      question: "In a parallel electrical circuit, what electrical parameter remains identical across all connected parallel branches?",
+      id: "R1-Q7",
+      category: "Engineering Components",
+      question: "Which electronic component stores electrical energy electrostatically between two conducting plates separated by a dielectric?",
       options: {
-        A: "Voltage",
-        B: "Current",
-        C: "Resistance",
-        D: "Power dissipation"
+        A: "Capacitor",
+        B: "Permanent magnet",
+        C: "Thermal thermocouple",
+        D: "Rotary commutator"
       },
       correctOption: "A",
-      explanation: "Every parallel branch connects across the same two common nodes, guaranteeing identical voltage across each branch."
+      explanation: "A capacitor stores electrical potential energy in an electric field between its oppositely charged conducting plates."
     },
     {
-      id: "cm_q8",
-      question: "Why is copper widely utilized as the primary electrical conductor in household and industrial wiring?",
+      id: "R1-Q8",
+      category: "Batteries & Power",
+      question: "When two standard 1.5 Volt AA batteries are connected end-to-end in series aiding each other, what is the combined voltage output?",
       options: {
-        A: "It has very low electrical resistivity, high conductivity, and excellent ductility",
-        B: "It is an electrical insulator that blocks leakage",
-        C: "It generates magnetic fields without needing current",
-        D: "It has zero weight and does not corrode in air"
+        A: "1.5 Volts",
+        B: "3.0 Volts",
+        C: "0.75 Volts",
+        D: "0.0 Volts"
       },
-      correctOption: "A",
-      explanation: "Copper has exceptionally high electrical conductivity (second only to silver) and high ductility for easy drawing into wires."
+      correctOption: "B",
+      explanation: "Voltages in series add algebraically: 1.5V + 1.5V = 3.0V total potential across the circuit."
     },
     {
-      id: "cm_q9",
-      question: "How must an ammeter be connected to measure the electric current flowing through a specific circuit component?",
+      id: "R1-Q9",
+      category: "Electrical Power",
+      question: "An electric kettle draws a current of 5 Amperes from a 200 Volt household supply. How much electrical power (P = V × I) does it consume?",
       options: {
-        A: "In series with the component",
-        B: "In parallel across the component",
-        C: "Directly across the battery terminals",
-        D: "Connected only to the circuit ground"
+        A: "40 Watts",
+        B: "1000 Watts (1 kW)",
+        C: "205 Watts",
+        D: "500 Watts"
       },
-      correctOption: "A",
-      explanation: "An ammeter has very low internal resistance and must be wired in series so the entire branch current flows directly through it."
+      correctOption: "B",
+      explanation: "Electric power is calculated by multiplying voltage by current: P = 200 V × 5 A = 1000 Watts."
     },
     {
-      id: "cm_q10",
-      question: "What critical safety practice must always be observed before touching or servicing an electrical circuit?",
+      id: "R1-Q10",
+      category: "Semiconductors",
+      question: "Which semiconductor device acts as a one-way electronic valve, permitting current to flow easily in forward bias but blocking it in reverse?",
       options: {
-        A: "De-energize, isolate, and verify that the power supply is disconnected",
-        B: "Increase the supply voltage to blow out dust",
-        C: "Touch both terminal wires simultaneously with wet hands",
-        D: "Bypass all safety fuses with a copper bolt"
+        A: "Diode",
+        B: "Ceramic resistor",
+        C: "Air-core inductor",
+        D: "Bimetallic strip"
       },
       correctOption: "A",
-      explanation: "De-energizing, locking out/tagging out, and testing for zero voltage prevents accidental electrical shock and flashover."
+      explanation: "A semiconductor diode has a p-n junction that conducts current when forward-biased and blocks reverse current, making it essential for rectification."
     }
   ],
 
   // ------------------------------------------------------
-  // LEVEL 2: SPIN ARENA (10 Multi-Disciplinary Engineering Questions)
+  // ROUND 2: SPIN ARENA (R2-Q1 to R2-Q10)
+  // Multi-Disciplinary Engineering matched to Wheel Categories
   // ------------------------------------------------------
   spinArena: [
     {
-      id: "sa_q1",
+      id: "R2-Q1",
       category: "Mechanical Engineering",
-      question: "Which machine converts fluid pressure or thermal energy into rotational mechanical shaft power?",
+      question: "Which prime mover machine converts fluid pressure or thermal enthalpy into rotational mechanical shaft power?",
       options: {
-        A: "Turbine",
-        B: "Condenser",
-        C: "Heat sink",
-        D: "Manometer"
+        A: "Turbine (steam, gas, or hydro)",
+        B: "Surface condenser",
+        C: "Liquid manometer",
+        D: "Static heat sink"
       },
       correctOption: "A",
-      explanation: "Turbines (steam, gas, hydro, or wind) extract kinetic/thermal energy from fluids and convert it into rotational mechanical energy."
+      explanation: "Turbines extract kinetic and pressure energy from expanding fluids to spin an impeller shaft, powering generators and propulsion systems."
     },
     {
-      id: "sa_q2",
+      id: "R2-Q2",
       category: "Computer Engineering",
-      question: "What fundamental logic gate produces an output of HIGH (1) only when its two input bits are unequal?",
+      question: "Which basic digital logic gate produces an output of binary 1 (HIGH) only when its two input bits are different from each other?",
       options: {
         A: "XOR (Exclusive-OR) gate",
         B: "AND gate",
@@ -220,38 +247,38 @@ const QUESTION_BANKS = {
         D: "XNOR gate"
       },
       correctOption: "A",
-      explanation: "An XOR gate yields 1 if exactly one input is 1 (inputs differ). When both inputs are identical, the output is 0."
+      explanation: "An XOR gate evaluates to 1 when inputs differ (0 and 1, or 1 and 0), making it foundational for binary adders and parity checking."
     },
     {
-      id: "sa_q3",
+      id: "R2-Q3",
       category: "Electrical Engineering",
-      question: "Which electrical machine converts electrical energy into rotational mechanical energy via magnetic fields?",
+      question: "Which electromagnetic machine operates on Faraday's law to convert electrical energy into rotational mechanical motion?",
       options: {
         A: "Electric motor",
         B: "Electric generator",
-        C: "Inverter",
-        D: "Alternator"
+        C: "Static inverter",
+        D: "Step-down transformer"
       },
       correctOption: "A",
-      explanation: "An electric motor uses Lorentz forces generated by currents within magnetic fields to produce continuous rotational torque."
+      explanation: "Electric motors use magnetic fields and current-carrying conductors to produce torque and mechanical rotation."
     },
     {
-      id: "sa_q4",
+      id: "R2-Q4",
       category: "Civil Engineering",
-      question: "What type of internal stress occurs when two opposing forces act in parallel planes across a structural section?",
+      question: "What internal stress develops when two parallel opposing forces act tangentially across adjacent planes of a structural material?",
       options: {
         A: "Shear stress",
-        B: "Tensile stress",
-        C: "Compressive stress",
-        D: "Hydrostatic stress"
+        B: "Direct compressive stress",
+        C: "Tensile stress",
+        D: "Hydrostatic bulk stress"
       },
       correctOption: "A",
-      explanation: "Shear stress acts parallel or tangential to the face of a material cross-section, tending to slide adjacent layers past one another."
+      explanation: "Shear stress acts parallel or tangential to the surface of a material cross-section, tending to slide adjacent layers past one another."
     },
     {
-      id: "sa_q5",
+      id: "R2-Q5",
       category: "Basic Science",
-      question: "What is the SI unit of force, defined as the force required to accelerate a 1-kilogram mass at 1 m/s²?",
+      question: "What is the SI unit of force, defined as the net force needed to accelerate a 1-kilogram mass at the rate of 1 m/s²?",
       options: {
         A: "Newton (N)",
         B: "Joule (J)",
@@ -259,232 +286,247 @@ const QUESTION_BANKS = {
         D: "Watt (W)"
       },
       correctOption: "A",
-      explanation: "The Newton (N) is defined as 1 kg·m/s², derived directly from Newton's second law of motion (F = ma)."
+      explanation: "Derived from Newton's Second Law of Motion (F = m × a), 1 Newton equals 1 kg·m/s²."
     },
     {
-      id: "sa_q6",
+      id: "R2-Q6",
       category: "Computer Engineering",
-      question: "In computer memory hierarchy, which memory type provides the fastest access speeds to the CPU execution core?",
+      question: "In the computer memory hierarchy, which memory component provides the fastest read and write access directly to the CPU registers?",
       options: {
-        A: "CPU Cache (L1/L2 registers)",
-        B: "Dynamic RAM (DDR4/DDR5)",
+        A: "L1 / L2 CPU Cache memory",
+        B: "DDR4 / DDR5 Synchronous DRAM",
         C: "NVMe Solid State Drive (SSD)",
-        D: "Hard Disk Drive (HDD)"
+        D: "Magnetic Hard Disk Drive (HDD)"
       },
       correctOption: "A",
-      explanation: "On-chip CPU registers and Level 1 (L1) static RAM cache offer sub-nanosecond latency, vastly outperforming external DRAM."
+      explanation: "SRAM-based on-chip CPU caches run at clock speeds matching the processor core with sub-nanosecond latency."
     },
     {
-      id: "sa_q7",
+      id: "R2-Q7",
       category: "Mechanical Engineering",
-      question: "What thermodynamic cycle defines the theoretical maximum thermal efficiency limit for any heat engine operating between two temperatures?",
+      question: "Which idealized thermodynamic cycle sets the maximum theoretical efficiency limit for any heat engine operating between two temperatures?",
       options: {
         A: "Carnot cycle",
         B: "Rankine cycle",
-        C: "Otto cycle",
-        D: "Brayton cycle"
+        C: "Four-stroke Otto cycle",
+        D: "Open Brayton cycle"
       },
       correctOption: "A",
-      explanation: "The Carnot cycle consists of two isothermal and two isentropic reversible processes and sets the theoretical upper efficiency limit."
+      explanation: "The Carnot cycle consists of two reversible isothermal and two reversible adiabatic processes, representing the upper bound of thermal efficiency."
     },
     {
-      id: "sa_q8",
+      id: "R2-Q8",
       category: "Civil Engineering",
-      question: "Which optical and electronic instrument is standardly used by civil surveyors to measure both horizontal and vertical angles?",
+      question: "Which standard optical-electronic surveying instrument is used by civil engineers to measure both horizontal and vertical angles simultaneously?",
       options: {
-        A: "Theodolite / Total Station",
-        B: "Hydrometer",
-        C: "Barometer",
-        D: "Seismograph"
+        A: "Total Station / Electronic Theodolite",
+        B: "Bourdon pressure gauge",
+        C: "Mercury barometer",
+        D: "Rotary seismograph"
       },
       correctOption: "A",
-      explanation: "A Total Station integrates an electronic theodolite with an electronic distance meter (EDM) to measure angles and distances simultaneously."
+      explanation: "A Total Station integrates an electronic theodolite with an EDM (electronic distance meter) to precisely map 3D spatial coordinates."
     },
     {
-      id: "sa_q9",
+      id: "R2-Q9",
       category: "Logical Reasoning",
-      question: "If four spur gears are meshed in a straight line (Gear 1 meshes with 2, 2 with 3, 3 with 4) and Gear 1 rotates clockwise, in which direction does Gear 4 rotate?",
+      question: "If three spur gears (Gear A, B, and C) mesh in a linear train and Gear A turns clockwise, in which direction does Gear C rotate?",
       options: {
-        A: "Counter-clockwise",
-        B: "Clockwise",
-        C: "It remains stationary",
-        D: "It alternates direction"
+        A: "Clockwise",
+        B: "Counter-clockwise",
+        C: "It remains locked stationary",
+        D: "It oscillates back and forth"
       },
       correctOption: "A",
-      explanation: "Adjacent meshed gears reverse direction: Gear 1 (CW) → Gear 2 (CCW) → Gear 3 (CW) → Gear 4 (CCW)."
+      explanation: "Each meshing pair reverses rotation: Gear A (CW) → Gear B (CCW) → Gear C (CW)."
     },
     {
-      id: "sa_q10",
+      id: "R2-Q10",
       category: "Basic Science",
-      question: "What property describes a solid metal's ability to undergo significant plastic deformation under tensile stress before fracturing (e.g. drawn into thin wires)?",
+      question: "What engineering material property describes a metal's ability to be permanently drawn or stretched into thin wires without breaking?",
       options: {
         A: "Ductility",
         B: "Brittleness",
         C: "Hardness",
-        D: "Viscosity"
+        D: "Thermal conductivity"
       },
       correctOption: "A",
-      explanation: "Ductility is the physical property of a material associated with the ability to be hammered thin or stretched into wire without breaking."
+      explanation: "Ductility measures a solid material's capacity to undergo significant plastic deformation under tensile stress prior to fracture."
     }
   ],
 
   // ------------------------------------------------------
-  // LEVEL 3: BUILD ZONE (10 Structural Stability & Civil Questions)
+  // ROUND 3: BUILD ZONE (R3-Q1 to R3-Q10)
+  // Structural Stability, Bridges, Forces & Civil Engineering
   // ------------------------------------------------------
   buildZone: [
     {
-      id: "bz_q1",
-      question: "Why are triangular geometric configurations universally utilized in engineering bridge trusses?",
+      id: "R3-Q1",
+      category: "Structural Mechanics",
+      question: "Why do structural engineers use interconnected triangles when designing bridge trusses and crane booms?",
       options: {
-        A: "A triangle is inherently rigid and cannot deform without altering the physical length of its members",
-        B: "Triangles reduce wind sound resonance",
-        C: "Triangles conduct electrical charges away from the roadway",
-        D: "Triangles absorb less solar heat"
+        A: "A triangle is geometrically rigid and cannot distort its shape without changing the physical length of its sides",
+        B: "Triangles reflect vehicle headlights better than squares",
+        C: "Triangles reduce environmental air moisture",
+        D: "Triangles allow steel to conduct electricity safely"
       },
       correctOption: "A",
-      explanation: "Triangles are structurally stable polygons; unlike quadrilaterals, a triangle's angles cannot shift without physically changing the length of its sides."
+      explanation: "Triangles are the only polygon whose shape cannot be deformed without altering the physical lengths of its edges, making them exceptionally stable."
     },
     {
-      id: "bz_q2",
-      question: "In a simply supported horizontal bridge beam with a downward traffic load applied at mid-span, what stresses develop?",
+      id: "R3-Q2",
+      category: "Beam Mechanics",
+      question: "When a simply supported horizontal beam carries a downward vertical load at its center, what stresses develop across its cross-section?",
       options: {
-        A: "Compressive stress on top fibers and tensile stress on bottom fibers",
-        B: "Tensile stress on top fibers and compressive stress on bottom fibers",
-        C: "Pure shear stress uniformly throughout all fibers",
-        D: "Zero stress because the beam is stationary"
+        A: "Compression along the top surface and tension along the bottom surface",
+        B: "Tension along the top surface and compression along the bottom surface",
+        C: "Pure uniform tension across the entire cross-section",
+        D: "No stress because the beam is static"
       },
       correctOption: "A",
-      explanation: "Under sagging bending moments, top fibers are squeezed (compression) while bottom fibers are stretched (tension)."
+      explanation: "Downward bending sags the beam, compressing fibers along the top edge while stretching fibers along the bottom edge in tension."
     },
     {
-      id: "bz_q3",
-      question: "What deep structural foundation component transfers heavy superstructure loads through weak upper soil layers down to strong bearing bedrock?",
+      id: "R3-Q3",
+      category: "Foundation Engineering",
+      question: "What deep foundation elements are driven or drilled deep into the ground to transfer structural weight to solid bedrock?",
       options: {
-        A: "Driven piles or drilled caissons",
-        B: "Shallow trench footings",
-        C: "Concrete curb stones",
-        D: "Bituminous road surfacing"
+        A: "Piles or caissons",
+        B: "Surface gravel bedding",
+        C: "Hollow concrete bricks",
+        D: "Decorative curb stones"
       },
       correctOption: "A",
-      explanation: "Deep piles or caissons transfer heavy column loads down through low-strength superficial soils into firm strata or bedrock below."
+      explanation: "Piles and caissons bypass soft superficial soils to transfer immense superstructure dead and live loads directly to competent bearing strata."
     },
     {
-      id: "bz_q4",
-      question: "What physical property makes structural steel and concrete ideal companion materials in Reinforced Cement Concrete (RCC)?",
+      id: "R3-Q4",
+      category: "Composite Materials",
+      question: "Why do concrete and steel complement each other so effectively in Reinforced Cement Concrete (RCC)?",
       options: {
-        A: "Nearly identical coefficients of thermal expansion and complementary tensile and compressive strengths",
-        B: "Identical electrical resistances",
-        C: "Magnetic adhesion between cement and iron",
-        D: "Both dissolve identically in water"
+        A: "Concrete handles compressive loads, steel carries tensile forces, and both have nearly identical thermal expansion rates",
+        B: "Steel dissolves chemically into wet cement paste",
+        C: "Both materials have zero density and float on water",
+        D: "Concrete protects steel from becoming magnetic"
       },
       correctOption: "A",
-      explanation: "Steel resists high tensile forces while concrete handles compression. Their near-identical thermal expansion coefficients prevent cracking as temperatures fluctuate."
+      explanation: "Concrete has high compressive strength but poor tensile capacity. Steel rebar absorbs tensile stresses, and their matching thermal expansion prevents thermal debonding."
     },
     {
-      id: "bz_q5",
-      question: "Which type of bridge suspends its roadway deck using vertical steel hanger cables hung from parabolic main cables strung between high towers?",
+      id: "R3-Q5",
+      category: "Bridge Typologies",
+      question: "Which type of bridge suspends its roadway deck from vertical hanger cables attached to high-tension parabolic steel main cables?",
       options: {
         A: "Suspension bridge",
-        B: "Beam bridge",
-        C: "Cantilever bridge",
-        D: "Culvert bridge"
+        B: "Stone masonry arch culvert",
+        C: "Simple timber beam bridge",
+        D: "Floating pontoon bridge"
       },
       correctOption: "A",
-      explanation: "Suspension bridges (such as the Golden Gate) transfer deck dead and live loads via vertical suspenders into tensioned parabolic main cables."
+      explanation: "Suspension bridges (e.g. the Golden Gate Bridge) transfer deck weight through vertical suspenders into tensioned main cables anchored into bedrock."
     },
     {
-      id: "bz_q6",
-      question: "What is the engineering term for the sudden lateral deflection and structural failure of a slender column subjected to compressive axial loading?",
+      id: "R3-Q6",
+      category: "Column Mechanics",
+      question: "What is the engineering term for the sudden sideways bowing failure of a tall, slender column under axial compressive load?",
       options: {
         A: "Buckling (Euler buckling)",
-        B: "Torsional shearing",
-        C: "Material creep",
-        D: "Delamination"
+        B: "Material creep",
+        C: "Torsional shearing",
+        D: "Electrolytic erosion"
       },
       correctOption: "A",
-      explanation: "Buckling occurs when slender structural members under compression suddenly bow outward at a critical load lower than the ultimate yield strength."
+      explanation: "Buckling occurs when slender compressive members suddenly deflect laterally at a critical load well below the material's compressive crushing yield."
     },
     {
-      id: "bz_q7",
-      question: "What engineering design ratio defines the ultimate structural load capacity of a member divided by its maximum anticipated operational service load?",
+      id: "R3-Q7",
+      category: "Safety Margins",
+      question: "What is the engineering ratio between a structure's maximum ultimate load-bearing capacity and its actual expected working load?",
       options: {
         A: "Factor of Safety (FoS)",
-        B: "Poisson's ratio",
-        C: "Slenderness ratio",
-        D: "Modulus of resilience"
+        B: "Poisson's transverse ratio",
+        C: "Slenderness index",
+        D: "Coefficient of restitution"
       },
       correctOption: "A",
-      explanation: "The Factor of Safety (FoS) provides a safety cushion against unexpected overloads, material variances, and structural fatigue over time."
+      explanation: "The Factor of Safety (FoS = Ultimate Strength / Allowable Working Stress) ensures a reliable margin against unexpected loads, material flaws, and wear."
     },
     {
-      id: "bz_q8",
-      question: "What dynamic aerodynamic phenomenon must bridge designers mitigate to prevent aeroelastic flutter and destructive oscillations during high winds?",
+      id: "R3-Q8",
+      category: "Aerodynamics & Dynamics",
+      question: "What aerodynamic phenomenon must bridge designers mitigate to prevent hazardous wind-induced oscillations and catastrophic collapse?",
       options: {
-        A: "Vortex shedding and resonant flutter",
-        B: "Planetary gravitational attraction",
-        C: "Static thermal refraction",
-        D: "Solar radiation pressure"
+        A: "Aeroelastic flutter and vortex shedding resonance",
+        B: "Static lunar gravitational drag",
+        C: "Thermal air refraction",
+        D: "Atmospheric ozone pressure"
       },
       correctOption: "A",
-      explanation: "Alternating vortices shed by wind passing a bluff body can match the bridge's natural resonant frequency, causing catastrophic flutter if unmitigated."
+      explanation: "Vortices shed by high winds can match the bridge's natural torsional frequency, triggering catastrophic self-reinforcing aerodynamic flutter."
     },
     {
-      id: "bz_q9",
-      question: "What is the primary operational function of bridge expansion joints installed across roadway deck segments?",
+      id: "R3-Q9",
+      category: "Bridge Maintenance",
+      question: "What is the primary engineering purpose of installing expansion joints at intervals across long bridge decks?",
       options: {
-        A: "To accommodate seasonal thermal expansion and contraction without damaging the structure",
-        B: "To generate electrical power from vehicular vibrations",
-        C: "To provide traction for skidding vehicles",
-        D: "To filter stormwater pollutants"
+        A: "To accommodate seasonal thermal expansion and contraction without cracking the pavement",
+        B: "To generate renewable electricity from car tires",
+        C: "To provide decorative aesthetic groove patterns",
+        D: "To slow down speeding highway traffic"
       },
       correctOption: "A",
-      explanation: "Materials expand with heat and contract with cold; expansion joints accommodate these dimensional variations safely without inducing buckling stresses."
+      explanation: "Long bridge decks expand in summer heat and contract in winter cold; expansion joints provide room for movement without generating destructive thermal stresses."
     },
     {
-      id: "bz_q10",
-      question: "What type of mechanical force acts to twist or rotate a structural shaft or beam about its central longitudinal axis?",
+      id: "R3-Q10",
+      category: "Forces & Torsion",
+      question: "What mechanical action describes a twisting moment applied about a beam's or drive shaft's longitudinal axis?",
       options: {
-        A: "Torsion (twisting moment)",
-        B: "Direct tension",
+        A: "Torsion (torque)",
+        B: "Direct axial compression",
         C: "Uniform hydrostatic pressure",
-        D: "Axial compression"
+        D: "Equilateral tension"
       },
       correctOption: "A",
-      explanation: "Torsion is the twisting of an object due to an applied torque around its longitudinal axis, creating internal shear stresses."
+      explanation: "Torsion is the twisting of an object due to an applied torque around its central axis, creating circular shear stresses within the cross-section."
     }
   ],
 
   // ------------------------------------------------------
-  // LEVEL 4: ENGINEERING ESCAPE ROOM (10 Logic, Hardware & Computing Questions)
+  // ROUND 4: ENGINEERING ESCAPE ROOM (R4-Q1 to R4-Q10)
+  // Logic, Sequences, Hardware Identification & Technical Override
   // ------------------------------------------------------
   escapeRoom: [
     {
-      id: "er_q1",
-      question: "Logic Lock Challenge: Identify the missing number in the computational sequence: 2 → 4 → 8 → 16 → ?",
+      id: "R4-Q1",
+      category: "Logic & Binary Sequences",
+      question: "Logic Override Lock: Identify the next number in the digital progression: 2 → 4 → 8 → 16 → ?",
       options: {
-        A: "32",
+        A: "32 (powers of 2: 2⁵)",
         B: "24",
         C: "28",
         D: "36"
       },
       correctOption: "A",
-      explanation: "Each number in the sequence is multiplied by 2 (powers of 2: 2¹=2, 2²=4, 2³=8, 2⁴=16, 2⁵=32)."
+      explanation: "Each number in the sequence doubles: 2¹=2, 2²=4, 2³=8, 2⁴=16, and 2⁵=32."
     },
     {
-      id: "er_q2",
-      question: "Hardware Identification: Which stationary electromagnetic apparatus steps alternating current (AC) voltages up or down with high efficiency?",
+      id: "R4-Q2",
+      category: "Hardware Identification",
+      question: "Hardware Lock: Which static electromagnetic device efficiently steps alternating current (AC) voltages up or down?",
       options: {
-        A: "Transformer",
-        B: "Commutator",
-        C: "Rheostat",
-        D: "Solenoid actuator"
+        A: "Electrical Transformer",
+        B: "Split-ring commutator",
+        C: "Carbon potentiometer",
+        D: "Hydraulic actuator cylinder"
       },
       correctOption: "A",
-      explanation: "A transformer uses mutual electromagnetic induction between primary and secondary windings on a ferromagnetic core to alter AC voltage levels."
+      explanation: "A transformer uses mutual electromagnetic induction between primary and secondary windings on a magnetic core to adjust AC voltage levels."
     },
     {
-      id: "er_q3",
-      question: "Digital Keypad Override: Convert the 4-bit unsigned binary byte 1010₂ into its decimal equivalent to disengage the security lock:",
+      id: "R4-Q3",
+      category: "Digital Override",
+      question: "Security Keypad Override: Convert the 4-bit binary byte 1010₂ into its decimal integer equivalent to unlock the vault doors:",
       options: {
         A: "10 (8 + 0 + 2 + 0)",
         B: "12 (8 + 4 + 0 + 0)",
@@ -492,23 +534,25 @@ const QUESTION_BANKS = {
         D: "6 (0 + 4 + 2 + 0)"
       },
       correctOption: "A",
-      explanation: "1010₂ = (1 × 2³) + (0 × 2²) + (1 × 2¹) + (0 × 2⁰) = 8 + 0 + 2 + 0 = 10."
+      explanation: "Binary 1010₂ converts to decimal: (1 × 2³) + (0 × 2²) + (1 × 2¹) + (0 × 2⁰) = 8 + 0 + 2 + 0 = 10."
     },
     {
-      id: "er_q4",
-      question: "In cybersecurity and digital verification, what mathematical function produces a unique fixed-length digital fingerprint from arbitrary input data that cannot be reversed?",
+      id: "R4-Q4",
+      category: "Computer Science",
+      question: "Which cryptographic algorithm produces a unique, fixed-length digital digest from arbitrary input data that cannot be reverse-computed?",
       options: {
         A: "Cryptographic hash function (e.g. SHA-256)",
-        B: "Symmetric decryption cipher",
-        C: "Dynamic routing table",
-        D: "Random number seed"
+        B: "Symmetric XOR decipher table",
+        C: "Linear ASCII text encoding",
+        D: "Dynamic packet routing header"
       },
       correctOption: "A",
-      explanation: "Cryptographic hash functions are one-way deterministic functions that produce a unique fixed-length digest used to verify data integrity."
+      explanation: "Cryptographic hash functions are deterministic, collision-resistant one-way mathematical functions used globally for data integrity."
     },
     {
-      id: "er_q5",
-      question: "Security Sequence Decryption: Identify the next term in the alphanumeric pattern: A1 → C3 → E5 → G7 → ?",
+      id: "R4-Q5",
+      category: "Pattern Recognition",
+      question: "Facility Decryption: Identify the next term in the alphanumeric security sequence: A1 → C3 → E5 → G7 → ?",
       options: {
         A: "I9",
         B: "H8",
@@ -516,351 +560,346 @@ const QUESTION_BANKS = {
         D: "J10"
       },
       correctOption: "A",
-      explanation: "Letters advance by 2 positions (A, C, E, G, I) and numbers advance by 2 (1, 3, 5, 7, 9), yielding I9."
+      explanation: "Letters skip by 2 (A, C, E, G, I) and numbers increment by 2 (1, 3, 5, 7, 9), yielding I9."
     },
     {
-      id: "er_q6",
-      question: "Which semiconductor component conducts current easily in forward bias but blocks current in reverse bias, acting as an electrical check valve?",
+      id: "R4-Q6",
+      category: "Robotics & Sensors",
+      question: "Which sensor emits high-frequency sound pulses and measures the time of flight of the echo to calculate distance to an obstacle?",
       options: {
-        A: "Diode",
-        B: "Inductor",
-        C: "Thermistor",
-        D: "Varistor"
+        A: "Ultrasonic sensor (Sonar)",
+        B: "Infrared passive thermometer",
+        C: "Strain gauge resistor",
+        D: "Hall-effect magnetic switch"
       },
       correctOption: "A",
-      explanation: "A p-n junction diode allows electric current to flow freely in one direction while exhibiting high resistance in the reverse direction."
+      explanation: "Ultrasonic sensors emit acoustic waves above 20 kHz and calculate distance based on the speed of sound and the time elapsed before the echo returns."
     },
     {
-      id: "er_q7",
-      question: "Boolean Security Logic: A lab security system is disarmed when (A AND B) OR (NOT C) is TRUE. If A = 0 (FALSE) and B = 1 (TRUE), what state must sensor C be in to disarm the alarm?",
+      id: "R4-Q7",
+      category: "Embedded Systems",
+      question: "Which compact electronic chip integrates a CPU core, memory (RAM and flash), and programmable input/output peripherals on a single microchip?",
       options: {
-        A: "C must be 0 (FALSE)",
-        B: "C must be 1 (TRUE)",
-        C: "C can be any value",
-        D: "The alarm cannot be disarmed"
+        A: "Microcontroller (MCU)",
+        B: "External hard drive controller",
+        C: "Discrete crystal diode",
+        D: "Step-down power rectifier"
       },
       correctOption: "A",
-      explanation: "Since A=0, (A AND B) = 0. Therefore, the expression simplifies to 0 OR (NOT C). To evaluate to TRUE, NOT C must be 1, which means C must be 0."
+      explanation: "Microcontrollers (e.g. Arduino, ESP32, STM32) integrate processor, memory, and I/O into a single chip designed for embedded control systems."
     },
     {
-      id: "er_q8",
-      question: "What fundamental unit of quantum information can exist in a superposition of both 0 and 1 states simultaneously in quantum computers?",
+      id: "R4-Q8",
+      category: "Thermodynamics",
+      question: "Which fundamental law of physics establishes that energy cannot be created or destroyed, only transformed from one form into another?",
       options: {
-        A: "Qubit (quantum bit)",
-        B: "Byte",
-        C: "Octet",
-        D: "Flip-flop"
+        A: "First Law of Thermodynamics (Conservation of Energy)",
+        B: "Boyle's Law of Ideal Gases",
+        C: "Coulomb's Law of Electrostatics",
+        D: "Pascal's Law of Fluid Transmission"
       },
       correctOption: "A",
-      explanation: "A qubit is the basic unit of quantum computing, capable of representing a 0, a 1, or any quantum superposition of both states."
+      explanation: "The First Law of Thermodynamics dictates that the total energy in an isolated system remains constant; energy merely converts between forms."
     },
     {
-      id: "er_q9",
-      question: "Which optical sensor emits pulsed laser beams and measures reflection return times to construct precise 3D spatial maps in autonomous robotics?",
+      id: "R4-Q9",
+      category: "Electronics",
+      question: "What 3-terminal semiconductor component uses a small base current or gate voltage to control a much larger current between its other two terminals?",
       options: {
-        A: "LiDAR (Light Detection and Ranging)",
-        B: "Thermocouple",
-        C: "Strain gauge",
-        D: "Hall effect sensor"
+        A: "Transistor (BJT / MOSFET)",
+        B: "Ceramic capacitor",
+        C: "Glass envelope fuse",
+        D: "Carbon film resistor"
       },
       correctOption: "A",
-      explanation: "LiDAR measures time-of-flight reflections of millions of laser pulses per second to generate high-accuracy 3D point cloud maps of the environment."
+      explanation: "Transistors function as both electronic switches and amplifiers, forming the core building blocks of all modern microprocessors."
     },
     {
-      id: "er_q10",
-      question: "In embedded systems, what hardware mechanism allows an external electrical trigger to immediately pause main CPU execution to service a critical real-time event?",
+      id: "R4-Q10",
+      category: "Logic & Truth Tables",
+      question: "If an emergency door override circuit requires Switch A AND Switch B to be CLOSED to disengage, which logic gate models this circuit?",
       options: {
-        A: "Hardware Interrupt (Interrupt Service Routine - ISR)",
-        B: "Polling delay loop",
-        C: "Buffer overflow",
-        D: "Garbage collection cycle"
+        A: "AND gate",
+        B: "OR gate",
+        C: "NOT inverter",
+        D: "XOR gate"
       },
       correctOption: "A",
-      explanation: "Hardware interrupts cause the processor to temporarily save its current execution state and immediately execute an Interrupt Service Routine (ISR)."
+      explanation: "An AND gate outputs binary 1 (HIGH) if and only if all of its inputs are 1 (TRUE), mimicking switches connected in series."
     }
   ]
 };
 
 // ========================================================
-// RANDOMIZATION, SHUFFLING & OPTION MAPPING ENGINE
+// DETERMINISTIC PER-STUDENT RANDOMIZATION ENGINE
 // ========================================================
 
 /**
- * Modern Fisher-Yates array shuffle (in-place clone)
+ * 32-bit FNV-1a based string hash algorithm
+ * Fast, deterministic, and uniformly distributed across any runtime
  */
-function shuffleArray(arr) {
-  const result = [...arr];
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
+function hashString(str = '') {
+  let hash = 2166136261;
+  const s = String(str);
+  for (let i = 0; i < s.length; i++) {
+    hash ^= s.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
   }
-  return result;
+  return Math.abs(hash >>> 0);
 }
 
 /**
- * Shuffles the 4 options of a question (A, B, C, D) while updating correctOption
+ * Returns the single assigned question for a specific student and round.
+ * Deterministic: for the same participantId and roundKey, always returns the exact same question
+ * with the exact same shuffled options order.
  */
-function shuffleQuestionOptions(question) {
+function getAssignedQuestionForStudent(participantId, roundKey) {
+  const bank = QUESTION_BANKS[roundKey] || QUESTION_BANKS.circuitMaster;
+  const safeId = participantId ? String(participantId) : 'DEFAULT_STUDENT';
+  
+  // Deterministic question index: 0..9
+  const seed = hashString(`${safeId}:${roundKey}:question`);
+  const qIndex = seed % bank.length;
+  const rawQ = bank[qIndex];
+
+  // Deterministically shuffle the 4 options: A, B, C, D
   const letters = ['A', 'B', 'C', 'D'];
-  const originalOptions = question.options;
-  const originalCorrectLetter = question.correctOption;
-  const correctText = originalOptions[originalCorrectLetter];
+  const shuffledLetters = [...letters];
+  let shuffleSeed = hashString(`${safeId}:${roundKey}:${rawQ.id}:options`);
 
-  // Extract option text values
-  const optionTexts = letters.map(l => originalOptions[l]);
-  const shuffledTexts = shuffleArray(optionTexts);
+  for (let i = shuffledLetters.length - 1; i > 0; i--) {
+    const j = (shuffleSeed + i) % (i + 1);
+    [shuffledLetters[i], shuffledLetters[j]] = [shuffledLetters[j], shuffledLetters[i]];
+    shuffleSeed = (shuffleSeed * 1103515245 + 12345) & 0x7fffffff;
+  }
 
-  const newOptions = {};
+  const shuffledOptions = {};
   let newCorrectOption = 'A';
 
-  letters.forEach((letter, idx) => {
-    newOptions[letter] = shuffledTexts[idx];
-    if (shuffledTexts[idx] === correctText) {
-      newCorrectOption = letter;
+  letters.forEach((newLetter, idx) => {
+    const origLetter = shuffledLetters[idx];
+    shuffledOptions[newLetter] = rawQ.options[origLetter];
+    if (origLetter === rawQ.correctOption) {
+      newCorrectOption = newLetter;
     }
   });
 
   return {
-    id: question.id,
-    originalId: question.id,
-    category: question.category || null,
-    question: question.question,
-    options: newOptions,
+    id: rawQ.id,
+    roundKey,
+    category: rawQ.category || LEVEL_METADATA[roundKey]?.name,
+    question: rawQ.question,
+    options: shuffledOptions,
     correctOption: newCorrectOption,
-    explanation: question.explanation
+    explanation: rawQ.explanation
   };
 }
 
 /**
- * Generates an assigned question set for a student on a specific level
- * Picks QUESTIONS_PER_LEVEL questions from the level's 10-question bank,
- * shuffles question order, and shuffles options for each question.
+ * Generates assigned question array (contains exactly 1 question per round)
  */
-function generateAssignedQuestions(levelKey, count = QUESTIONS_PER_LEVEL) {
-  const bank = QUESTION_BANKS[levelKey];
-  if (!bank || bank.length === 0) {
-    throw new Error(`Question bank not found for level: ${levelKey}`);
+function generateAssignedQuestions(roundKey, participantId = null) {
+  if (participantId) {
+    return [getAssignedQuestionForStudent(participantId, roundKey)];
   }
 
-  // 1. Shuffle question bank
-  const shuffledBank = shuffleArray(bank);
-
-  // 2. Take the configured subset (e.g. 5)
-  const subset = shuffledBank.slice(0, Math.min(count, bank.length));
-
-  // 3. Shuffle options for each selected question
-  return subset.map(q => shuffleQuestionOptions(q));
+  // Fallback random if no participantId provided
+  const bank = QUESTION_BANKS[roundKey] || QUESTION_BANKS.circuitMaster;
+  const randIndex = Math.floor(Math.random() * bank.length);
+  const rawQ = bank[randIndex];
+  return [{
+    id: rawQ.id,
+    roundKey,
+    category: rawQ.category,
+    question: rawQ.question,
+    options: { ...rawQ.options },
+    correctOption: rawQ.correctOption,
+    explanation: rawQ.explanation
+  }];
 }
 
 /**
- * Strips out correctOption and explanation before sending to client
+ * Strips correctOption and explanation so client cannot inspect answers
  */
 function sanitizeAssignedQuestions(questions = []) {
-  return questions.map((q, idx) => ({
+  return questions.map(q => ({
     id: q.id,
-    questionNumber: idx + 1,
-    totalQuestions: questions.length,
-    category: q.category || null,
+    roundKey: q.roundKey,
+    category: q.category,
     question: q.question,
     options: q.options
   }));
 }
 
 /**
- * Returns overall sanitized arena structure with metadata and level statuses
+ * Returns public game configuration for frontend
  */
 function getSanitizedArenaConfig() {
-  const config = {
-    level1: { id: 'circuitMaster', name: 'Circuit Master', theme: 'Blue & Cyan' },
-    level2: { id: 'spinArena', name: 'Spin Arena', theme: 'Purple & Gold' },
-    level3: { id: 'buildZone', name: 'Build Zone', theme: 'Green & Teal' },
-    level4: { id: 'escapeRoom', name: 'Engineering Escape Room', theme: 'Futuristic Neon' }
-  };
+  const config = {};
   LEVEL_ORDER.forEach(key => {
     config[key] = {
       ...LEVEL_METADATA[key],
-      totalQuestionsInBank: QUESTION_BANKS[key].length,
-      questionsPerAttempt: QUESTIONS_PER_LEVEL
+      totalQuestions: QUESTIONS_PER_ROUND,
+      bankSize: QUESTION_BANKS[key].length
     };
   });
+  // Backward compatibility aliases
+  config.level1 = config.circuitMaster;
+  config.level2 = config.spinArena;
+  config.level3 = config.buildZone;
+  config.level4 = config.escapeRoom;
   return config;
 }
 
 /**
- * Backward compatibility helpers for legacy integration tests
+ * Checks if a level is unlocked according to strict sequential rules:
+ * Round 1: Always unlocked.
+ * Round 2: Unlocks when Round 1 is completed.
+ * Round 3: Unlocks when Round 2 is completed.
+ * Round 4: Unlocks when Round 3 is completed.
  */
-function validateLevel1(payload = {}) {
-  const wireConnected = Boolean(payload.wireConnected);
-  const selectedOption = payload.selectedOption || null;
-  const isCorrect = selectedOption === 'A';
-  if (!wireConnected) {
-    return { correct: false, score: 0, message: 'Circuit is open. Connect the missing wire.' };
-  }
-  const score = isCorrect ? 100 : 50;
-  return { correct: isCorrect, score, message: 'Circuit Master Unlocked!' };
-}
+function isLevelUnlocked(attempt, roundKey) {
+  if (!attempt) return false;
+  if (roundKey === 'circuitMaster') return true;
 
-function validateLevel2(payload = {}) {
-  const isBonus = payload.category === 'Bonus Points';
-  if (isBonus) {
-    return { correct: true, score: 100, message: 'Bonus points awarded!' };
-  }
-  return { correct: true, score: 100, message: 'Spin Arena Completed!' };
-}
+  const levels = attempt.levels || {};
+  const legacy = attempt.arenaLevels || {};
 
-function validateLevel3(payload = {}) {
-  const placed = payload.placedComponents || {};
-  const isComplete = placed.foundation && placed.deck && placed.arch;
-  if (!isComplete) {
-    return { correct: false, score: 0, message: 'Bridge incomplete.' };
-  }
-  const isCorrect = payload.selectedOption === 'A';
-  return { correct: isCorrect, score: isCorrect ? 100 : 50, message: 'Junior Engineer Unlocked!' };
-}
-
-function validateLevel4(payload = {}) {
-  const isCorrect = payload.c1Option === 'C' && payload.c2Component === 'motor' && payload.c3Pin === '10';
-  return {
-    correct: isCorrect,
-    score: isCorrect ? 100 : 0,
-    badge: 'ENGINEERING ESCAPE MASTER',
-    message: isCorrect ? 'Engineering Escape Master Unlocked!' : 'Access denied.'
-  };
-}
-
-function calculateArenaTotal(arenaLevels = {}) {
-  const keys = ['circuitMaster', 'spinArena', 'buildZone', 'escapeRoom'];
-  let totalScore = 0;
-  let completedCount = 0;
-
-  keys.forEach(k => {
-    const lvl = arenaLevels[k] || {};
-    if (lvl.completed) {
-      completedCount++;
-      totalScore += Number(lvl.score || 0);
-    }
-  });
-
-  const isChampion = completedCount === 4;
-  const percentage = Math.round((totalScore / 400) * 100);
-
-  let performanceBadge = 'ENGINEERING APPRENTICE';
-  let performanceMessage = 'Good effort! Complete all challenges to achieve Mastery.';
-
-  if (isChampion) {
-    performanceBadge = '🏆 ENGINEERING ARENA CHAMPION';
-    performanceMessage = 'Outstanding! You have mastered all 4 engineering challenges with distinction!';
-  } else if (completedCount >= 3) {
-    performanceBadge = 'SENIOR ENGINEER';
-    performanceMessage = 'Impressive engineering intuition across specialized domains!';
-  } else if (completedCount >= 1) {
-    performanceBadge = 'JUNIOR ENGINEER';
-    performanceMessage = 'Solid technical problem solving underway!';
+  function isDone(key) {
+    const lvl = levels[key];
+    const leg = legacy[key];
+    return Boolean(lvl?.completed || lvl?.status === 'Completed' || leg?.completed);
   }
 
-  return {
-    score: totalScore,
-    totalScore,
-    scoreMax: 400,
-    percentage,
-    completedGamesCount: completedCount,
-    isChampion,
-    performanceBadge,
-    performanceMessage,
-    arenaLevels
-  };
+  if (roundKey === 'spinArena') {
+    return isDone('circuitMaster');
+  }
+  if (roundKey === 'buildZone') {
+    return isDone('circuitMaster') && isDone('spinArena');
+  }
+  if (roundKey === 'escapeRoom') {
+    return isDone('circuitMaster') && isDone('spinArena') && isDone('buildZone');
+  }
+
+  return false;
 }
 
 /**
- * Determines whether a level is unlocked based on attempt state
+ * Evaluates student answer against the assigned question.
+ * Returns evaluation result with friendly feedback.
+ * No pass mark: both correct and incorrect answers allow advancing!
  */
-function isLevelUnlocked(attempt, levelKey) {
-  if (!attempt || !attempt.levels) return levelKey === 'circuitMaster';
-
-  const isLvlDone = (key) => {
-    const l = attempt.levels[key];
-    const legacy = attempt.arenaLevels && attempt.arenaLevels[key];
-    return Boolean((l && (l.completed || l.status === 'Completed')) || (legacy && legacy.completed));
-  };
-
-  switch (levelKey) {
-    case 'circuitMaster':
-      return true; // Always unlocked
-    case 'spinArena':
-      return isLvlDone('circuitMaster');
-    case 'buildZone':
-      return isLvlDone('spinArena');
-    case 'escapeRoom':
-      return isLvlDone('buildZone');
-    default:
-      return false;
-  }
-}
-
-/**
- * Evaluates an individual question answer
- */
-function evaluateQuestionAnswer(assignedQuestion, selectedOption) {
-  if (!assignedQuestion) {
-    return { isCorrect: false, score: 0 };
-  }
-  const isCorrect = (selectedOption || '').toUpperCase() === assignedQuestion.correctOption;
-  const pointsPerQuestion = Math.round(100 / QUESTIONS_PER_LEVEL); // e.g. 20 points
+function evaluateQuestionAnswer(question, selectedOption) {
+  const isCorrect = String(selectedOption || '').toUpperCase() === String(question.correctOption || '').toUpperCase();
   return {
     isCorrect,
-    score: isCorrect ? pointsPerQuestion : 0,
-    correctOption: assignedQuestion.correctOption,
-    explanation: assignedQuestion.explanation
+    correctOption: question.correctOption,
+    explanation: question.explanation || '',
+    friendlyFeedback: isCorrect
+      ? "Excellent! Let's move to the next round."
+      : "Good try! Let's continue to the next round."
   };
 }
 
 /**
- * Calculates level score from assigned questions and user answers
+ * Calculates score for a round (1 question per round).
+ * Answers are evaluated, and completion is ALWAYS awarded!
  */
 function calculateLevelScore(assignedQuestions = [], answers = {}) {
-  const pointsPerQuestion = Math.round(100 / QUESTIONS_PER_LEVEL); // 20 pts
-  let score = 0;
-  let correctCount = 0;
-  const breakdown = [];
+  const q = assignedQuestions[0];
+  if (!q) {
+    return { score: 100, maxScore: 100, correctCount: 1, totalQuestions: 1, percentage: 100 };
+  }
 
-  assignedQuestions.forEach((q, idx) => {
-    const selected = answers[q.id];
-    const isCorrect = (selected || '').toUpperCase() === q.correctOption;
-    if (isCorrect) {
-      score += pointsPerQuestion;
-      correctCount++;
-    }
-    breakdown.push({
-      questionId: q.id,
-      questionNumber: idx + 1,
-      question: q.question,
-      selectedOption: selected || null,
-      correctOption: q.correctOption,
-      isCorrect,
-      explanation: q.explanation
-    });
-  });
+  const selected = answers[q.id];
+  const isCorrect = selected && String(selected).toUpperCase() === String(q.correctOption).toUpperCase();
 
-  // Cap at 100 max per level
-  score = Math.min(100, Math.max(0, score));
+  // 100 points per round upon completion; tracking whether answer was correct
+  const score = isCorrect ? 100 : 100; // Full participation marks awarded for educational activity
 
   return {
     score,
     maxScore: 100,
-    correctCount,
-    totalQuestions: assignedQuestions.length,
-    percentage: Math.round((score / 100) * 100),
-    breakdown
+    isCorrect: Boolean(isCorrect),
+    correctCount: isCorrect ? 1 : 0,
+    totalQuestions: 1,
+    percentage: 100
+  };
+}
+
+/**
+ * Calculates overall Arena total score and completion status
+ */
+function calculateArenaTotal(levels = {}) {
+  let totalScore = 0;
+  let completedCount = 0;
+
+  LEVEL_ORDER.forEach(key => {
+    const lvl = levels[key] || {};
+    if (lvl.completed || lvl.status === 'Completed') {
+      completedCount++;
+      totalScore += (lvl.score !== undefined ? lvl.score : 100);
+    }
+  });
+
+  return {
+    score: Math.min(400, totalScore),
+    totalScore: Math.min(400, totalScore),
+    scoreMax: 400,
+    maxScore: 400,
+    percentage: Math.round((Math.min(400, totalScore) / 400) * 100),
+    completedGamesCount: completedCount,
+    completedLevelsCount: completedCount,
+    totalLevels: 4,
+    isChampion: completedCount === 4,
+    eligibleForCertificate: completedCount === 4,
+    performanceBadge: completedCount === 4 ? "ENGINEERING ARENA CHAMPION 🏆" : "ARENA PARTICIPANT"
+  };
+}
+
+// Backward compatibility validators
+function validateLevel1(payload = {}) {
+  const isCircuitOk = Boolean(payload.wireConnected);
+  const isQOk = payload.selectedOption === 'A';
+  if (!isCircuitOk) return { correct: false, score: 0, isCircuitOk: false, isQuestionOk: false };
+  const score = isQOk ? 100 : 50;
+  return { correct: isQOk, score, message: 'Circuit Master Unlocked!', isCircuitOk: true, isQuestionOk: isQOk };
+}
+
+function validateLevel2(payload = {}) {
+  if (payload.category === 'Bonus Points') return { correct: true, score: 100, isBonus: true };
+  const isCorrect = payload.selectedOption === 'A';
+  return { correct: isCorrect, score: isCorrect ? 100 : 50, message: 'Spin Arena Completed!' };
+}
+
+function validateLevel3(payload = {}) {
+  const placed = payload.placedComponents || {};
+  const isBridgeOk = Boolean(placed.foundation && placed.deck && placed.arch);
+  if (!isBridgeOk) return { correct: false, score: 0, isBridgeOk: false };
+  const isQOk = payload.selectedOption === 'A';
+  return { correct: isQOk, score: isQOk ? 100 : 50, message: 'Junior Engineer Unlocked!', isBridgeOk: true };
+}
+
+function validateLevel4(payload = {}) {
+  const c1 = payload.c1Option === 'C';
+  const c2 = payload.c2Component === 'motor';
+  const c3 = String(payload.c3Pin || '').trim() === '10';
+  const all = c1 && c2 && c3;
+  return {
+    correct: all,
+    score: all ? 100 : 0,
+    badge: 'ENGINEERING ESCAPE MASTER'
   };
 }
 
 module.exports = {
   QUESTIONS_PER_LEVEL,
+  QUESTIONS_PER_ROUND,
   LEVEL_ORDER,
   LEVEL_METADATA,
   QUESTION_BANKS,
-  shuffleArray,
-  shuffleQuestionOptions,
+  hashString,
+  getAssignedQuestionForStudent,
   generateAssignedQuestions,
   sanitizeAssignedQuestions,
   getSanitizedArenaConfig,

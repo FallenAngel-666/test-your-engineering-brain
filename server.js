@@ -188,22 +188,17 @@ app.get('/api/arena/config', (req, res) => {
 app.get('/api/arena/status', (req, res) => {
   try {
     const { attemptId, participantId } = req.query;
-    let attempt = null;
-    if (attemptId) {
-      attempt = db.findAttemptById(attemptId);
-    } else if (participantId) {
-      attempt = db.findLatestAttemptByParticipant(participantId);
+    let participantData = null;
+    if (req.headers['x-participant-data']) {
+      try { participantData = JSON.parse(decodeURIComponent(req.headers['x-participant-data'])); } catch (e) {}
     }
 
-    if (!attempt && participantId) {
-      attempt = db.createQuizAttempt(participantId);
-    }
-
+    const attempt = db.findOrCreateAttempt(attemptId, participantId, participantData);
     if (!attempt) {
       return res.status(404).json({ error: 'No active attempt found.' });
     }
 
-    const status = db.getArenaAttemptStatus(attempt.attemptId);
+    const status = db.getArenaAttemptStatus(attempt.attemptId, participantId, participantData);
     return res.json({ success: true, status });
   } catch (err) {
     console.error('[API /arena/status error]:', err);
@@ -211,28 +206,22 @@ app.get('/api/arena/status', (req, res) => {
   }
 });
 
-// 2d. ENGINEERING ARENA - Fetch Assigned Questions for a Level (Enforces Sequential Unlocking)
+// 2d. ENGINEERING ARENA - Fetch Assigned Question for a Round (Enforces Sequential Unlocking)
 app.get('/api/arena/level/:levelKey', (req, res) => {
   try {
     const { levelKey } = req.params;
     const { attemptId, participantId } = req.query;
-
-    let attempt = null;
-    if (attemptId) {
-      attempt = db.findAttemptById(attemptId);
-    } else if (participantId) {
-      attempt = db.findLatestAttemptByParticipant(participantId);
+    let participantData = null;
+    if (req.headers['x-participant-data']) {
+      try { participantData = JSON.parse(decodeURIComponent(req.headers['x-participant-data'])); } catch (e) {}
     }
 
-    if (!attempt && participantId) {
-      attempt = db.createQuizAttempt(participantId);
-    }
-
+    const attempt = db.findOrCreateAttempt(attemptId, participantId, participantData);
     if (!attempt) {
       return res.status(404).json({ error: 'Attempt not found.' });
     }
 
-    const levelData = db.getOrAssignLevelQuestions(attempt.attemptId, levelKey);
+    const levelData = db.getOrAssignLevelQuestions(attempt.attemptId, levelKey, participantId, participantData);
     if (levelData.error) {
       const statusCode = levelData.locked ? 403 : 400;
       return res.status(statusCode).json(levelData);
@@ -248,12 +237,12 @@ app.get('/api/arena/level/:levelKey', (req, res) => {
 // 2e. ENGINEERING ARENA - Record Interactive Action (Circuit connect, spin wheel, build bridge, escape room)
 app.post('/api/arena/interactive-action', (req, res) => {
   try {
-    const { attemptId, levelKey, payload } = req.body;
-    if (!attemptId || !levelKey) {
-      return res.status(400).json({ error: 'attemptId and levelKey are required.' });
+    const { attemptId, participantId, participantData, levelKey, payload } = req.body;
+    if (!levelKey) {
+      return res.status(400).json({ error: 'levelKey is required.' });
     }
 
-    const result = db.recordInteractiveAction(attemptId, levelKey, payload || {});
+    const result = db.recordInteractiveAction(attemptId, levelKey, payload || {}, participantId, participantData);
     if (result.error) {
       const statusCode = result.locked ? 403 : 400;
       return res.status(statusCode).json(result);
@@ -266,17 +255,17 @@ app.post('/api/arena/interactive-action', (req, res) => {
   }
 });
 
-// 2f. ENGINEERING ARENA - Submit Question Answer (Real-time backend validation, prevents duplicates)
+// 2f. ENGINEERING ARENA - Submit Question Answer (Real-time backend validation, No Pass Mark)
 app.post('/api/arena/submit-answer', (req, res) => {
   try {
-    const { attemptId, levelKey, questionId, selectedOption } = req.body;
-    if (!attemptId || !levelKey || !questionId || !selectedOption) {
-      return res.status(400).json({ error: 'attemptId, levelKey, questionId, and selectedOption are required.' });
+    const { attemptId, participantId, participantData, levelKey, questionId, selectedOption } = req.body;
+    if (!levelKey || !selectedOption) {
+      return res.status(400).json({ error: 'levelKey and selectedOption are required.' });
     }
 
-    const result = db.saveLevelAnswer(attemptId, levelKey, questionId, selectedOption);
+    const result = db.saveLevelAnswer(attemptId, levelKey, questionId, selectedOption, participantId, participantData);
     if (result.error) {
-      const statusCode = result.locked ? 403 : (result.alreadyCompleted ? 409 : 400);
+      const statusCode = result.locked ? 403 : 400;
       return res.status(statusCode).json(result);
     }
 
@@ -287,15 +276,15 @@ app.post('/api/arena/submit-answer', (req, res) => {
   }
 });
 
-// 2g. ENGINEERING ARENA - Complete Level (Calculates score & unlocks next level in sequence)
+// 2g. ENGINEERING ARENA - Complete Round (Calculates score & unlocks next round in sequence)
 app.post('/api/arena/complete-level', (req, res) => {
   try {
-    const { attemptId, levelKey } = req.body;
-    if (!attemptId || !levelKey) {
-      return res.status(400).json({ error: 'attemptId and levelKey are required.' });
+    const { attemptId, participantId, participantData, levelKey } = req.body;
+    if (!levelKey) {
+      return res.status(400).json({ error: 'levelKey is required.' });
     }
 
-    const result = db.completeLevel(attemptId, levelKey);
+    const result = db.completeLevel(attemptId, levelKey, participantId, participantData);
     if (result.error) {
       const statusCode = result.locked ? 403 : 400;
       return res.status(statusCode).json(result);
@@ -801,14 +790,21 @@ app.get('/api/admin/export-csv', requireAdmin, (req, res) => {
       'IEI Membership ID',
       'Registration Timestamp',
       'Total Score (out of 400)',
-      'Percentage (%)',
-      'Circuit Master (100)',
-      'Spin Arena (100)',
-      'Build Zone (100)',
-      'Escape Room (100)',
-      'Completed Games (4)',
+      'Completed Rounds (out of 4)',
+      'Round 1 Question ID',
+      'Round 1 Answer',
+      'Round 1 Status',
+      'Round 2 Question ID',
+      'Round 2 Answer',
+      'Round 2 Status',
+      'Round 3 Question ID',
+      'Round 3 Answer',
+      'Round 3 Status',
+      'Round 4 Question ID',
+      'Round 4 Answer',
+      'Round 4 Status',
       'Arena Champion',
-      'Quiz Status',
+      'Overall Completion Status',
       'Certificate Status',
       'Certificate ID',
       'Email Status',
@@ -831,12 +827,19 @@ app.get('/api/admin/export-csv', requireAdmin, (req, res) => {
       escapeCsv(p.ieiMembershipId || 'N/A'),
       escapeCsv(p.registrationTimestamp),
       escapeCsv(p.score),
-      escapeCsv(p.percentage),
-      escapeCsv(p.circuitScore ?? (p.score ?? 0)),
-      escapeCsv(p.spinScore ?? 0),
-      escapeCsv(p.buildScore ?? 0),
-      escapeCsv(p.escapeScore ?? 0),
-      escapeCsv(p.completedGamesCount ?? 0),
+      escapeCsv(`${p.completedLevelsCount ?? 0} / 4`),
+      escapeCsv(p.r1QuestionId || 'N/A'),
+      escapeCsv(p.r1Answer || 'N/A'),
+      escapeCsv(p.circuitStatus || 'Not Started'),
+      escapeCsv(p.r2QuestionId || 'N/A'),
+      escapeCsv(p.r2Answer || 'N/A'),
+      escapeCsv(p.spinStatus || 'Not Started'),
+      escapeCsv(p.r3QuestionId || 'N/A'),
+      escapeCsv(p.r3Answer || 'N/A'),
+      escapeCsv(p.buildStatus || 'Not Started'),
+      escapeCsv(p.r4QuestionId || 'N/A'),
+      escapeCsv(p.r4Answer || 'N/A'),
+      escapeCsv(p.escapeStatus || 'Not Started'),
       escapeCsv(p.isChampion ? 'Yes 🏆' : 'No'),
       escapeCsv(p.quizStatus),
       escapeCsv(p.certificateStatus),
@@ -848,7 +851,7 @@ app.get('/api/admin/export-csv', requireAdmin, (req, res) => {
     const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\r\n'); // UTF-8 BOM for Excel
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="Test_Your_Engineering_Brain_Participants.csv"');
+    res.setHeader('Content-Disposition', 'attachment; filename="Engineering_Arena_Participants.csv"');
     return res.send(csvContent);
   } catch (err) {
     console.error('[API /admin/export-csv error]:', err);

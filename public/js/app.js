@@ -507,26 +507,38 @@ async function refreshArenaStatus() {
   const attempt = state.attempt ||
     JSON.parse(sessionStorage.getItem('tyeb_attempt') || 'null') ||
     JSON.parse(localStorage.getItem('tyeb_attempt') || 'null');
+  const participant = state.participant ||
+    JSON.parse(sessionStorage.getItem('tyeb_participant') || 'null') ||
+    JSON.parse(localStorage.getItem('tyeb_participant') || 'null');
 
-  if (!attempt) return;
+  if (!attempt && !participant) return;
+
+  const attemptId = attempt ? attempt.attemptId : '';
+  const participantId = participant ? participant.participantId : '';
 
   try {
-    const res = await fetch(`/api/arena/status?attemptId=${attempt.attemptId}`);
+    const res = await fetch(`/api/arena/status?attemptId=${encodeURIComponent(attemptId)}&participantId=${encodeURIComponent(participantId)}`, {
+      headers: {
+        'x-participant-data': encodeURIComponent(JSON.stringify(participant || {}))
+      }
+    });
     const data = await res.json();
-    if (data.success && data.levels) {
-      state.arena.levels = data.levels;
-      state.arena.totalScore = data.totalScore || 0;
-      state.arena.completedCount = data.completedCount || 0;
-      state.arena.isChampion = Boolean(data.isChampion);
+    if (data.success && data.status) {
+      state.arena.levels = data.status.levels || {};
+      state.arena.totalScore = data.status.totalScore || 0;
+      state.arena.completedCount = data.status.completedLevelsCount || 0;
+      state.arena.isChampion = Boolean(data.status.isChampion);
 
       // Cache locally
       try {
         const cur = JSON.parse(sessionStorage.getItem('tyeb_attempt') || '{}');
-        cur.levels = data.levels;
-        cur.arenaScore = data.totalScore;
-        cur.completedGamesCount = data.completedCount;
-        cur.isChampion = data.isChampion;
+        cur.levels = data.status.levels;
+        cur.arenaScore = data.status.totalScore;
+        cur.completedGamesCount = data.status.completedLevelsCount;
+        cur.completedLevelsCount = data.status.completedLevelsCount;
+        cur.isChampion = data.status.isChampion;
         sessionStorage.setItem('tyeb_attempt', JSON.stringify(cur));
+        localStorage.setItem('tyeb_attempt', JSON.stringify(cur));
       } catch (e) {}
 
       updateArenaHubUI();
@@ -762,15 +774,23 @@ async function recordInteractiveAction(levelKey, payload = {}) {
   const attempt = state.attempt ||
     JSON.parse(sessionStorage.getItem('tyeb_attempt') || 'null') ||
     JSON.parse(localStorage.getItem('tyeb_attempt') || 'null');
+  const participant = state.participant ||
+    JSON.parse(sessionStorage.getItem('tyeb_participant') || 'null') ||
+    JSON.parse(localStorage.getItem('tyeb_participant') || 'null');
 
-  if (!attempt) return null;
+  if (!attempt && !participant) return null;
 
   try {
     const res = await fetch('/api/arena/interactive-action', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-participant-data': encodeURIComponent(JSON.stringify(participant || {}))
+      },
       body: JSON.stringify({
-        attemptId: attempt.attemptId,
+        attemptId: attempt ? attempt.attemptId : null,
+        participantId: participant ? participant.participantId : null,
+        participantData: participant,
         levelKey,
         payload
       })
@@ -787,8 +807,18 @@ async function loadAndStartLevel(levelKey) {
   const attempt = state.attempt ||
     JSON.parse(sessionStorage.getItem('tyeb_attempt') || 'null') ||
     JSON.parse(localStorage.getItem('tyeb_attempt') || 'null');
+  const participant = state.participant ||
+    JSON.parse(sessionStorage.getItem('tyeb_participant') || 'null') ||
+    JSON.parse(localStorage.getItem('tyeb_participant') || 'null');
 
-  if (!attempt) return;
+  if (!attempt && !participant) {
+    showToast('Please register first.', 'warning');
+    switchView('landing');
+    return;
+  }
+
+  const attemptId = attempt ? attempt.attemptId : '';
+  const participantId = participant ? participant.participantId : '';
 
   const viewPrefix = {
     circuitMaster: 'l1',
@@ -798,7 +828,11 @@ async function loadAndStartLevel(levelKey) {
   }[levelKey];
 
   try {
-    const res = await fetch(`/api/arena/level/${levelKey}?attemptId=${attempt.attemptId}`);
+    const res = await fetch(`/api/arena/level/${levelKey}?attemptId=${encodeURIComponent(attemptId)}&participantId=${encodeURIComponent(participantId)}`, {
+      headers: {
+        'x-participant-data': encodeURIComponent(JSON.stringify(participant || {}))
+      }
+    });
     const data = await res.json();
 
     if (!res.ok) {
@@ -867,184 +901,204 @@ function startLevelQuestionRunner(levelKey, questions = [], existingAnswers = {}
   if (!runnerCard) return;
   runnerCard.style.display = 'block';
 
-  // Find first unanswered question
-  let startIndex = 0;
-  for (let i = 0; i < questions.length; i++) {
-    if (existingAnswers[questions[i].id]) {
-      startIndex = i + 1;
-    } else {
-      break;
-    }
-  }
+  const roundNumber = {
+    circuitMaster: 1,
+    spinArena: 2,
+    buildZone: 3,
+    escapeRoom: 4
+  }[levelKey] || 1;
 
-  if (startIndex >= questions.length && questions.length > 0) {
+  const q = questions[0];
+  if (!q) return;
+
+  // If already answered
+  if (existingAnswers && existingAnswers[q.id]) {
     completeAndShowLevelSuccess(levelKey);
     return;
   }
 
-  renderQuestion(startIndex);
+  let selectedOption = null;
 
-  function renderQuestion(idx) {
-    if (idx >= questions.length) {
-      completeAndShowLevelSuccess(levelKey);
-      return;
-    }
+  const counterEl = document.getElementById(`${viewPrefix}RunnerCounter`);
+  const progressEl = document.getElementById(`${viewPrefix}RunnerProgressBar`);
+  const textEl = document.getElementById(`${viewPrefix}RunnerQuestionText`);
+  const optionsGrid = document.getElementById(`${viewPrefix}RunnerOptionsGrid`);
+  const feedbackBox = document.getElementById(`${viewPrefix}RunnerFeedbackBox`);
+  const submitBtn = document.getElementById(`${viewPrefix}BtnSubmitAnswer`);
+  const nextBtn = document.getElementById(`${viewPrefix}BtnNextQuestion`);
 
-    const q = questions[idx];
-    let selectedOption = null;
+  if (counterEl) counterEl.textContent = `Round ${roundNumber} Engineering Question (${q.id})`;
+  if (progressEl) progressEl.style.width = '100%';
+  if (textEl) textEl.textContent = q.question;
 
-    const counterEl = document.getElementById(`${viewPrefix}RunnerCounter`);
-    const progressEl = document.getElementById(`${viewPrefix}RunnerProgressBar`);
-    const textEl = document.getElementById(`${viewPrefix}RunnerQuestionText`);
-    const optionsGrid = document.getElementById(`${viewPrefix}RunnerOptionsGrid`);
-    const feedbackBox = document.getElementById(`${viewPrefix}RunnerFeedbackBox`);
-    const submitBtn = document.getElementById(`${viewPrefix}BtnSubmitAnswer`);
-    const nextBtn = document.getElementById(`${viewPrefix}BtnNextQuestion`);
+  if (feedbackBox) feedbackBox.style.display = 'none';
+  if (nextBtn) nextBtn.style.display = 'none';
+  if (submitBtn) {
+    submitBtn.style.display = 'inline-block';
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'SUBMIT ANSWER 📝';
+  }
 
-    if (counterEl) counterEl.textContent = `Question ${idx + 1} of ${questions.length}`;
-    if (progressEl) progressEl.style.width = `${((idx + 1) / questions.length) * 100}%`;
-    if (textEl) textEl.textContent = q.question;
+  if (optionsGrid) {
+    optionsGrid.innerHTML = '';
+    const letters = ['A', 'B', 'C', 'D'];
+    letters.forEach(letter => {
+      const text = q.options[letter];
+      if (!text) return;
+      const card = document.createElement('div');
+      card.className = 'option-card';
+      card.innerHTML = `
+        <div class="option-badge">${letter}</div>
+        <div class="option-label">${text}</div>
+      `;
 
-    if (feedbackBox) feedbackBox.style.display = 'none';
-    if (nextBtn) nextBtn.style.display = 'none';
-    if (submitBtn) {
-      submitBtn.style.display = 'inline-block';
+      card.addEventListener('click', () => {
+        if (card.classList.contains('disabled')) return;
+        AudioFX.playClick();
+        selectedOption = letter;
+
+        optionsGrid.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        if (submitBtn) submitBtn.disabled = false;
+      });
+
+      optionsGrid.appendChild(card);
+    });
+  }
+
+  // Submit Answer Action
+  if (submitBtn) {
+    submitBtn.onclick = async () => {
+      if (!selectedOption) return;
       submitBtn.disabled = true;
-      submitBtn.textContent = 'SUBMIT ANSWER 📝';
-    }
+      submitBtn.textContent = 'SUBMITTING ANSWER... ⏳';
 
-    if (optionsGrid) {
-      optionsGrid.innerHTML = '';
-      const letters = ['A', 'B', 'C', 'D'];
-      letters.forEach(letter => {
-        const text = q.options[letter];
-        if (!text) return;
-        const card = document.createElement('div');
-        card.className = 'option-card';
-        card.innerHTML = `
-          <div class="option-badge">${letter}</div>
-          <div class="option-label">${text}</div>
-        `;
+      const attempt = state.attempt ||
+        JSON.parse(sessionStorage.getItem('tyeb_attempt') || 'null') ||
+        JSON.parse(localStorage.getItem('tyeb_attempt') || 'null');
+      const participant = state.participant ||
+        JSON.parse(sessionStorage.getItem('tyeb_participant') || 'null') ||
+        JSON.parse(localStorage.getItem('tyeb_participant') || 'null');
 
-        card.addEventListener('click', () => {
-          if (card.classList.contains('disabled')) return;
-          AudioFX.playClick();
-          selectedOption = letter;
-
-          optionsGrid.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
-          card.classList.add('selected');
-          if (submitBtn) submitBtn.disabled = false;
+      try {
+        const res = await fetch('/api/arena/submit-answer', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-participant-data': encodeURIComponent(JSON.stringify(participant || {}))
+          },
+          body: JSON.stringify({
+            attemptId: attempt ? attempt.attemptId : null,
+            participantId: participant ? participant.participantId : null,
+            participantData: participant,
+            levelKey,
+            questionId: q.id,
+            selectedOption
+          })
         });
 
-        optionsGrid.appendChild(card);
-      });
-    }
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Answer evaluation failed');
 
-    // Submit Answer Action
-    if (submitBtn) {
-      submitBtn.onclick = async () => {
-        if (!selectedOption) return;
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'VERIFYING ANSWER... ⏳';
+        // Freeze options
+        optionsGrid.querySelectorAll('.option-card').forEach(c => c.classList.add('disabled'));
 
-        const attempt = state.attempt ||
-          JSON.parse(sessionStorage.getItem('tyeb_attempt') || 'null') ||
-          JSON.parse(localStorage.getItem('tyeb_attempt') || 'null');
-
-        try {
-          const res = await fetch('/api/arena/submit-answer', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              attemptId: attempt ? attempt.attemptId : null,
-              levelKey,
-              questionId: q.id,
-              selectedOption
-            })
-          });
-
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || 'Answer evaluation failed');
-
-          // Freeze options
-          optionsGrid.querySelectorAll('.option-card').forEach(c => c.classList.add('disabled'));
-
-          // Highlight correct and incorrect
-          optionsGrid.querySelectorAll('.option-card').forEach(c => {
-            const badge = c.querySelector('.option-badge');
-            const letter = badge ? badge.textContent.trim() : '';
-            if (letter === data.correctOption) {
-              c.classList.add('correct-revealed');
-            } else if (letter === selectedOption && !data.isCorrect) {
-              c.classList.add('incorrect-revealed');
-            }
-          });
-
-          // Show feedback box
-          if (feedbackBox) {
-            feedbackBox.className = `runner-feedback-box ${data.isCorrect ? 'correct' : 'incorrect'}`;
-            const iconEl = document.getElementById(`${viewPrefix}FeedbackIcon`);
-            const titleEl = document.getElementById(`${viewPrefix}FeedbackTitle`);
-            const ptsEl = document.getElementById(`${viewPrefix}FeedbackPts`);
-            const expEl = document.getElementById(`${viewPrefix}FeedbackExplanation`);
-
-            if (iconEl) iconEl.textContent = data.isCorrect ? '✅' : '❌';
-            if (titleEl) titleEl.textContent = data.isCorrect ? 'Correct Answer!' : `Incorrect (Correct Answer: Option ${data.correctOption})`;
-            if (ptsEl) ptsEl.textContent = data.isCorrect ? '+20 Points' : '0 Points';
-            if (expEl) expEl.textContent = data.explanation || '';
-            feedbackBox.style.display = 'block';
+        // Highlight correct and incorrect options
+        optionsGrid.querySelectorAll('.option-card').forEach(c => {
+          const badge = c.querySelector('.option-badge');
+          const letter = badge ? badge.textContent.trim() : '';
+          if (letter === data.correctOption) {
+            c.classList.add('correct-revealed');
+          } else if (letter === selectedOption && !data.isCorrect) {
+            c.classList.add('incorrect-revealed');
           }
+        });
 
-          if (data.isCorrect) {
-            AudioFX.playCelebration();
-          } else {
-            AudioFX.playClick();
-          }
+        // Show friendly feedback box (Requirement 6: NO PASS MARK)
+        if (feedbackBox) {
+          feedbackBox.className = `runner-feedback-box ${data.isCorrect ? 'correct' : 'incorrect'}`;
+          const iconEl = document.getElementById(`${viewPrefix}FeedbackIcon`);
+          const titleEl = document.getElementById(`${viewPrefix}FeedbackTitle`);
+          const ptsEl = document.getElementById(`${viewPrefix}FeedbackPts`);
+          const expEl = document.getElementById(`${viewPrefix}FeedbackExplanation`);
 
-          submitBtn.style.display = 'none';
-
-          if (nextBtn) {
-            nextBtn.style.display = 'inline-block';
-            if (idx < questions.length - 1) {
-              nextBtn.textContent = 'NEXT QUESTION →';
-              nextBtn.onclick = () => {
-                AudioFX.playClick();
-                renderQuestion(idx + 1);
-              };
-            } else {
-              nextBtn.textContent = levelKey === 'escapeRoom' ? 'COMPLETE ARENA & UNLOCK CHAMPION 🏆' : 'COMPLETE LEVEL & UNLOCK NEXT LEVEL 🚀';
-              nextBtn.onclick = () => {
-                AudioFX.playClick();
-                completeAndShowLevelSuccess(levelKey);
-              };
-            }
-          }
-        } catch (err) {
-          showToast(err.message, 'error');
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'SUBMIT ANSWER 📝';
+          if (iconEl) iconEl.textContent = data.isCorrect ? '🌟' : '💡';
+          if (titleEl) titleEl.textContent = data.friendlyFeedback || (data.isCorrect ? "Excellent! Let's move to the next round." : "Good try! Let's continue to the next round.");
+          if (ptsEl) ptsEl.textContent = '+100 Points Awarded';
+          if (expEl) expEl.textContent = data.explanation || '';
+          feedbackBox.style.display = 'block';
         }
-      };
-    }
+
+        if (data.isCorrect) {
+          AudioFX.playCelebration();
+        } else {
+          AudioFX.playClick();
+        }
+
+        submitBtn.style.display = 'none';
+
+        // Show Next Round button
+        if (nextBtn) {
+          nextBtn.style.display = 'inline-block';
+          const nextConfig = {
+            circuitMaster: { label: 'PROCEED TO ROUND 2 (SPIN ARENA) →', targetKey: 'spinArena' },
+            spinArena: { label: 'PROCEED TO ROUND 3 (BUILD ZONE) →', targetKey: 'buildZone' },
+            buildZone: { label: 'PROCEED TO ROUND 4 (ESCAPE ROOM) →', targetKey: 'escapeRoom' },
+            escapeRoom: { label: 'CLAIM YOUR CHAMPION CERTIFICATE 🏆', targetKey: 'finish' }
+          }[levelKey];
+
+          nextBtn.textContent = nextConfig ? nextConfig.label : 'PROCEED TO NEXT ROUND →';
+          nextBtn.onclick = () => {
+            AudioFX.playClick();
+            if (nextConfig && nextConfig.targetKey === 'finish') {
+              finishEngineeringArena();
+            } else if (nextConfig) {
+              navigateToArenaLevel(nextConfig.targetKey);
+            } else {
+              enterEngineeringArena();
+            }
+          };
+        }
+
+        // Update local state and hub
+        if (state.arena.levels[levelKey]) {
+          state.arena.levels[levelKey].completed = true;
+          state.arena.levels[levelKey].score = 100;
+        }
+        await refreshArenaStatus();
+      } catch (err) {
+        showToast(err.message, 'error');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'SUBMIT ANSWER 📝';
+      }
+    };
   }
 
   async function completeAndShowLevelSuccess(key) {
     const attempt = state.attempt ||
       JSON.parse(sessionStorage.getItem('tyeb_attempt') || 'null') ||
       JSON.parse(localStorage.getItem('tyeb_attempt') || 'null');
+    const participant = state.participant ||
+      JSON.parse(sessionStorage.getItem('tyeb_participant') || 'null') ||
+      JSON.parse(localStorage.getItem('tyeb_participant') || 'null');
 
     try {
       const res = await fetch('/api/arena/complete-level', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-participant-data': encodeURIComponent(JSON.stringify(participant || {}))
+        },
         body: JSON.stringify({
           attemptId: attempt ? attempt.attemptId : null,
+          participantId: participant ? participant.participantId : null,
+          participantData: participant,
           levelKey: key
         })
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to complete level.');
+      if (!res.ok) throw new Error(data.error || 'Failed to complete round.');
 
       launchConfetti();
       AudioFX.playCelebration();
@@ -1308,15 +1362,31 @@ function setupLevel2SpinArena() {
 
   drawWheel(0);
 
-  function spinTheWheel() {
+  async function spinTheWheel() {
     if (isSpinning) return;
     isSpinning = true;
     spinBtn.disabled = true;
     if (statusText) statusText.textContent = 'Wheel spinning at high velocity... Hold on!';
 
-    const targetIdx = Math.floor(Math.random() * totalSlices);
-    const targetCategory = categories[targetIdx];
+    let targetIdx = 0;
+    try {
+      const attempt = state.attempt || JSON.parse(sessionStorage.getItem('tyeb_attempt') || 'null');
+      const participant = state.participant || JSON.parse(sessionStorage.getItem('tyeb_participant') || 'null');
+      const res = await fetch(`/api/arena/level/spinArena?attemptId=${encodeURIComponent(attempt?.attemptId || '')}&participantId=${encodeURIComponent(participant?.participantId || '')}`, {
+        headers: { 'x-participant-data': encodeURIComponent(JSON.stringify(participant || {})) }
+      });
+      const data = await res.json();
+      if (data.questions && data.questions[0]) {
+        state.arena.levels.spinArena.questions = data.questions;
+        const qCat = (data.questions[0].category || '').toLowerCase();
+        const matched = categories.findIndex(c => qCat.includes(c.name.toLowerCase()) || c.name.toLowerCase().includes(qCat));
+        if (matched >= 0) targetIdx = matched;
+      }
+    } catch (e) {
+      targetIdx = Math.floor(Math.random() * totalSlices);
+    }
 
+    const targetCategory = categories[targetIdx];
     const targetCenter = targetIdx * sliceAngle + sliceAngle / 2;
     const topPointerAngle = (3 * Math.PI) / 2;
     let targetAngle = topPointerAngle - targetCenter;

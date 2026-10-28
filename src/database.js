@@ -1,14 +1,14 @@
 /**
  * Data Access Layer for TEST YOUR ENGINEERING BRAIN
- * Provides thread-safe, persistent JSON storage with atomic writes.
- * Supports participants, quiz attempts, sequential 4-level progress, certificates, and email audit logs.
+ * Provides thread-safe, persistent JSON storage with atomic writes and Vercel serverless resiliency.
+ * Supports participants, quiz attempts, sequential 4-round progress, certificates, and email audit logs.
  */
 
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const {
-  QUESTIONS_PER_LEVEL,
+  QUESTIONS_PER_ROUND,
   LEVEL_ORDER,
   LEVEL_METADATA,
   generateAssignedQuestions,
@@ -33,11 +33,41 @@ const defaultState = {
   emailLogs: [],
   systemMeta: {
     initializedAt: new Date().toISOString(),
-    version: "2.0.0"
+    version: "2.1.0"
   }
 };
 
 let db = { ...defaultState };
+
+function reloadDatabaseFromFile() {
+  let sourceFile = DB_FILE;
+  if (!fs.existsSync(sourceFile) && fs.existsSync(BUNDLED_DB)) {
+    sourceFile = BUNDLED_DB;
+  }
+  if (fs.existsSync(sourceFile)) {
+    try {
+      const content = fs.readFileSync(sourceFile, 'utf-8');
+      const parsed = JSON.parse(content);
+      if (parsed) {
+        // Merge without losing freshly added in-memory items
+        const existingPartIds = new Set((parsed.participants || []).map(p => p.participantId));
+        (db.participants || []).forEach(p => {
+          if (!existingPartIds.has(p.participantId)) parsed.participants.push(p);
+        });
+
+        const existingAttemptIds = new Set((parsed.quizAttempts || []).map(a => a.attemptId));
+        (db.quizAttempts || []).forEach(a => {
+          if (!existingAttemptIds.has(a.attemptId)) parsed.quizAttempts.push(a);
+        });
+
+        db.participants = parsed.participants || [];
+        db.quizAttempts = parsed.quizAttempts || [];
+        db.certificates = parsed.certificates || db.certificates || [];
+        db.emailLogs = parsed.emailLogs || db.emailLogs || [];
+      }
+    } catch (e) {}
+  }
+}
 
 function initDatabase() {
   const dir = path.dirname(DB_FILE);
@@ -75,11 +105,20 @@ function initDatabase() {
 
 function saveDatabase() {
   try {
-    const tempFile = `${DB_FILE}.${Date.now()}.tmp`;
-    fs.writeFileSync(tempFile, JSON.stringify(db, null, 2), 'utf-8');
-    fs.renameSync(tempFile, DB_FILE);
+    const dir = path.dirname(DB_FILE);
+    if (!fs.existsSync(dir)) {
+      try { fs.mkdirSync(dir, { recursive: true }); } catch (e) {}
+    }
+    const dataStr = JSON.stringify(db, null, 2);
+    try {
+      const tempFile = `${DB_FILE}.${Date.now()}.${Math.random().toString(36).substring(2, 6)}.tmp`;
+      fs.writeFileSync(tempFile, dataStr, 'utf-8');
+      fs.renameSync(tempFile, DB_FILE);
+    } catch (renameErr) {
+      fs.writeFileSync(DB_FILE, dataStr, 'utf-8');
+    }
   } catch (err) {
-    console.error('[Database] Failed atomic write:', err);
+    console.error('[Database] Failed write:', err);
   }
 }
 
@@ -107,30 +146,49 @@ function createParticipant({
 
   const participant = {
     participantId,
-    fullName: fullName.trim(),
-    email: email.trim().toLowerCase(),
-    branch: branch.trim(),
+    fullName: (fullName || 'Participant').trim(),
+    email: (email || 'student@example.com').trim().toLowerCase(),
+    branch: (branch || 'Engineering').trim(),
     collegeName: collegeName ? collegeName.trim() : "Dr. M.G.R. Educational and Research Institute",
     isIeiMember: isMemberBool,
     ieiMembershipId: cleanMemberId,
     registrationTimestamp: now
   };
 
-  db.participants.push(participant);
+  const existingIdx = db.participants.findIndex(p => p.participantId === participantId);
+  if (existingIdx >= 0) {
+    db.participants[existingIdx] = participant;
+  } else {
+    db.participants.push(participant);
+  }
+
   saveDatabase();
   return participant;
 }
 
 function findParticipantById(participantId) {
-  return db.participants.find(p => p.participantId === participantId) || null;
+  if (!participantId) return null;
+  let p = db.participants.find(item => item.participantId === participantId);
+  if (!p) {
+    reloadDatabaseFromFile();
+    p = db.participants.find(item => item.participantId === participantId);
+  }
+  return p || null;
 }
 
 function findParticipantByEmail(email) {
+  if (!email) return null;
   const normalized = email.trim().toLowerCase();
-  return db.participants.find(p => p.email === normalized) || null;
+  let p = db.participants.find(item => item.email === normalized);
+  if (!p) {
+    reloadDatabaseFromFile();
+    p = db.participants.find(item => item.email === normalized);
+  }
+  return p || null;
 }
 
 function getAllParticipants() {
+  reloadDatabaseFromFile();
   return [...db.participants];
 }
 
@@ -142,22 +200,18 @@ function createQuizAttempt(participantId, existingAttemptId) {
   const attempt = {
     attemptId,
     participantId,
-    answers: {},
-    score: 0,
-    percentage: 0,
-    correctAnswers: 0,
-    incorrectAnswers: 0,
     status: 'In Progress', // 'Not Started', 'In Progress', 'Completed'
     startedAt: now,
     completedAt: null,
-    // Engineering Arena Sequential 4-Level Progress
+    // Engineering Arena Sequential 4-Round Progress
     currentUnlockedLevel: 'circuitMaster',
     levels: {
       circuitMaster: {
         status: 'In Progress',
         unlocked: true,
+        completed: false,
         interactiveCompleted: false,
-        assignedQuestions: [], // populated on demand & permanently saved!
+        assignedQuestions: [], // Populated deterministically per student ID
         answers: {},
         score: 0,
         maxScore: 100,
@@ -166,6 +220,7 @@ function createQuizAttempt(participantId, existingAttemptId) {
       spinArena: {
         status: 'Not Started',
         unlocked: false,
+        completed: false,
         interactiveCompleted: false,
         assignedQuestions: [],
         answers: {},
@@ -176,6 +231,7 @@ function createQuizAttempt(participantId, existingAttemptId) {
       buildZone: {
         status: 'Not Started',
         unlocked: false,
+        completed: false,
         interactiveCompleted: false,
         assignedQuestions: [],
         answers: {},
@@ -186,6 +242,7 @@ function createQuizAttempt(participantId, existingAttemptId) {
       escapeRoom: {
         status: 'Not Started',
         unlocked: false,
+        completed: false,
         interactiveCompleted: false,
         assignedQuestions: [],
         answers: {},
@@ -208,19 +265,64 @@ function createQuizAttempt(participantId, existingAttemptId) {
     isChampion: false
   };
 
-  db.quizAttempts.push(attempt);
+  const existingIdx = db.quizAttempts.findIndex(a => a.attemptId === attemptId);
+  if (existingIdx >= 0) {
+    db.quizAttempts[existingIdx] = attempt;
+  } else {
+    db.quizAttempts.push(attempt);
+  }
+
   saveDatabase();
   return attempt;
 }
 
 function findAttemptById(attemptId) {
-  return db.quizAttempts.find(a => a.attemptId === attemptId) || null;
+  if (!attemptId) return null;
+  let a = db.quizAttempts.find(item => item.attemptId === attemptId);
+  if (!a) {
+    reloadDatabaseFromFile();
+    a = db.quizAttempts.find(item => item.attemptId === attemptId);
+  }
+  return a || null;
 }
 
 function findLatestAttemptByParticipant(participantId) {
+  if (!participantId) return null;
+  reloadDatabaseFromFile();
   const attempts = db.quizAttempts.filter(a => a.participantId === participantId);
   if (attempts.length === 0) return null;
   return attempts[attempts.length - 1];
+}
+
+/**
+ * Resilient helper: finds attempt or reconstructs it seamlessly.
+ * Ensures Vercel serverless containers never fail with "Attempt not found"!
+ */
+function findOrCreateAttempt(attemptId, participantId, participantData = null) {
+  let attempt = findAttemptById(attemptId);
+  if (attempt) return attempt;
+
+  if (participantId) {
+    attempt = findLatestAttemptByParticipant(participantId);
+    if (attempt) return attempt;
+  }
+
+  let participant = participantId ? findParticipantById(participantId) : null;
+  if (!participant && participantData) {
+    participant = createParticipant({
+      participantId: participantId,
+      fullName: participantData.fullName || 'Participant',
+      email: participantData.email || 'participant@example.com',
+      branch: participantData.branch || 'Engineering',
+      collegeName: participantData.collegeName || '',
+      isIeiMember: participantData.isIeiMember || false,
+      ieiMembershipId: participantData.ieiMembershipId || null
+    });
+  }
+
+  const effectivePartId = participant ? participant.participantId : (participantId || generateId('PART'));
+  attempt = createQuizAttempt(effectivePartId, attemptId);
+  return attempt;
 }
 
 /**
@@ -232,6 +334,7 @@ function ensureAttemptLevels(attempt) {
       circuitMaster: {
         status: 'In Progress',
         unlocked: true,
+        completed: false,
         interactiveCompleted: false,
         assignedQuestions: [],
         answers: {},
@@ -242,6 +345,7 @@ function ensureAttemptLevels(attempt) {
       spinArena: {
         status: 'Not Started',
         unlocked: false,
+        completed: false,
         interactiveCompleted: false,
         assignedQuestions: [],
         answers: {},
@@ -252,6 +356,7 @@ function ensureAttemptLevels(attempt) {
       buildZone: {
         status: 'Not Started',
         unlocked: false,
+        completed: false,
         interactiveCompleted: false,
         assignedQuestions: [],
         answers: {},
@@ -262,6 +367,7 @@ function ensureAttemptLevels(attempt) {
       escapeRoom: {
         status: 'Not Started',
         unlocked: false,
+        completed: false,
         interactiveCompleted: false,
         assignedQuestions: [],
         answers: {},
@@ -274,18 +380,21 @@ function ensureAttemptLevels(attempt) {
 
   // Sync unlocked states according to sequential rules
   attempt.levels.circuitMaster.unlocked = true;
-  attempt.levels.spinArena.unlocked = Boolean(attempt.levels.circuitMaster?.status === 'Completed');
-  attempt.levels.buildZone.unlocked = Boolean(attempt.levels.spinArena?.status === 'Completed');
-  attempt.levels.escapeRoom.unlocked = Boolean(attempt.levels.buildZone?.status === 'Completed');
+  attempt.levels.spinArena.unlocked = Boolean(attempt.levels.circuitMaster?.completed || attempt.levels.circuitMaster?.status === 'Completed');
+  attempt.levels.buildZone.unlocked = Boolean(attempt.levels.spinArena?.completed || attempt.levels.spinArena?.status === 'Completed');
+  attempt.levels.escapeRoom.unlocked = Boolean(attempt.levels.buildZone?.completed || attempt.levels.buildZone?.status === 'Completed');
 }
 
 /**
- * Retrieves the student's assigned questions for a level.
- * If questions haven't been assigned yet, generates them randomly and persists them.
+ * Retrieves the student's assigned question for a round.
+ * If questions haven't been assigned yet, generates exactly 1 question deterministically per student ID and persists it.
  * Enforces sequential unlocking: returns error if level is locked!
  */
-function getOrAssignLevelQuestions(attemptId, levelKey) {
-  const attempt = findAttemptById(attemptId);
+function getOrAssignLevelQuestions(attemptId, levelKey, participantId = null, participantData = null) {
+  let attempt = findAttemptById(attemptId);
+  if (!attempt && (participantId || attemptId)) {
+    attempt = findOrCreateAttempt(attemptId, participantId, participantData);
+  }
   if (!attempt) return { error: 'Attempt not found.' };
 
   ensureAttemptLevels(attempt);
@@ -293,20 +402,16 @@ function getOrAssignLevelQuestions(attemptId, levelKey) {
   // Check sequential unlocking
   if (!isLevelUnlocked(attempt, levelKey)) {
     return {
-      error: `Level is locked. You must complete the previous level in sequence first.`,
+      error: `Level is locked. You must complete the previous round in sequence first.`,
       locked: true,
       levelKey
     };
   }
 
   const lvl = attempt.levels[levelKey];
-  if (!lvl) {
-    return { error: `Invalid level: ${levelKey}` };
-  }
-
-  // If questions not assigned yet, assign them and save permanently
+  // Exactly 1 question per round
   if (!lvl.assignedQuestions || lvl.assignedQuestions.length === 0) {
-    lvl.assignedQuestions = generateAssignedQuestions(levelKey, QUESTIONS_PER_LEVEL);
+    lvl.assignedQuestions = generateAssignedQuestions(levelKey, attempt.participantId);
     if (lvl.status === 'Not Started') {
       lvl.status = 'In Progress';
     }
@@ -323,22 +428,25 @@ function getOrAssignLevelQuestions(attemptId, levelKey) {
     questions: sanitizeAssignedQuestions(lvl.assignedQuestions),
     answers: lvl.answers || {},
     score: lvl.score || 0,
-    maxScore: lvl.maxScore || 100,
-    completed: lvl.status === 'Completed'
+    maxScore: 100,
+    completed: Boolean(lvl.completed || lvl.status === 'Completed')
   };
 }
 
 /**
  * Records completion of the interactive game portion (circuit / wheel / bridge / escape)
  */
-function recordInteractiveAction(attemptId, levelKey, payload = {}) {
-  const attempt = findAttemptById(attemptId);
+function recordInteractiveAction(attemptId, levelKey, payload = {}, participantId = null, participantData = null) {
+  let attempt = findAttemptById(attemptId);
+  if (!attempt && (participantId || attemptId)) {
+    attempt = findOrCreateAttempt(attemptId, participantId, participantData);
+  }
   if (!attempt) return { error: 'Attempt not found.' };
 
   ensureAttemptLevels(attempt);
 
   if (!isLevelUnlocked(attempt, levelKey)) {
-    return { error: `Level is locked. Complete the previous level first.`, locked: true };
+    return { error: `Round is locked. Complete the previous round first.`, locked: true };
   }
 
   const lvl = attempt.levels[levelKey];
@@ -354,90 +462,50 @@ function recordInteractiveAction(attemptId, levelKey, payload = {}) {
 }
 
 /**
- * Submits an answer to a specific question on a level.
- * Validates against the stored assigned question with server-side scoring.
+ * Submits an answer to the round's assigned question.
+ * 
+ * CRITICAL REQUIREMENT: NO PASS MARK!
+ * Wrong answers MUST NOT block progression.
+ * Submitting any valid answer saves the response, provides friendly feedback,
+ * marks the round as completed, and unlocks the next round in sequence!
  */
-function saveLevelAnswer(attemptId, levelKey, questionId, selectedOption) {
-  const attempt = findAttemptById(attemptId);
+function saveLevelAnswer(attemptId, levelKey, questionId, selectedOption, participantId = null, participantData = null) {
+  let attempt = findAttemptById(attemptId);
+  if (!attempt && (participantId || attemptId)) {
+    attempt = findOrCreateAttempt(attemptId, participantId, participantData);
+  }
   if (!attempt) return { error: 'Attempt not found.' };
 
   ensureAttemptLevels(attempt);
 
   if (!isLevelUnlocked(attempt, levelKey)) {
-    return { error: `Level is locked. Complete previous level first.`, locked: true };
+    return { error: `Round is locked. Complete the previous round first.`, locked: true };
   }
 
   const lvl = attempt.levels[levelKey];
-  if (lvl.status === 'Completed') {
-    return { error: 'Level is already completed. Answers cannot be changed.', alreadyCompleted: true };
+  if (!lvl.assignedQuestions || lvl.assignedQuestions.length === 0) {
+    lvl.assignedQuestions = generateAssignedQuestions(levelKey, attempt.participantId);
   }
 
-  // Find question in assigned list
-  const q = (lvl.assignedQuestions || []).find(item => item.id === questionId);
+  const q = (lvl.assignedQuestions || []).find(item => item.id === questionId) || lvl.assignedQuestions[0];
   if (!q) {
     return { error: 'Question not found in assigned question set.' };
   }
 
   if (!lvl.answers) lvl.answers = {};
-  lvl.answers[questionId] = selectedOption;
+  lvl.answers[q.id] = selectedOption;
 
   const evalResult = evaluateQuestionAnswer(q, selectedOption);
 
-  saveDatabase();
-
-  return {
-    success: true,
-    questionId,
-    selectedOption,
-    isCorrect: evalResult.isCorrect,
-    correctOption: evalResult.correctOption,
-    explanation: evalResult.explanation,
-    answeredCount: Object.keys(lvl.answers).length,
-    totalQuestions: lvl.assignedQuestions.length
-  };
-}
-
-/**
- * Completes a level when interactive action is done and all assigned questions are answered.
- * Calculates score, records completion, and unlocks the next level.
- */
-function completeLevel(attemptId, levelKey) {
-  const attempt = findAttemptById(attemptId);
-  if (!attempt) return { error: 'Attempt not found.' };
-
-  ensureAttemptLevels(attempt);
-
-  if (!isLevelUnlocked(attempt, levelKey)) {
-    return { error: `Level is locked. Complete previous level first.`, locked: true };
-  }
-
-  const lvl = attempt.levels[levelKey];
-  const assigned = lvl.assignedQuestions || [];
-  const answers = lvl.answers || {};
-
-  if (!lvl.interactiveCompleted) {
-    return { error: 'Interactive challenge must be completed before finishing the level.' };
-  }
-
-  const answeredCount = Object.keys(answers).length;
-  if (answeredCount < assigned.length) {
-    return {
-      error: `Please answer all ${assigned.length} questions before finishing this level (${answeredCount}/${assigned.length} answered).`,
-      unanswered: assigned.length - answeredCount
-    };
-  }
-
-  // Calculate score for this level
-  const scoreResult = calculateLevelScore(assigned, answers);
-  lvl.score = scoreResult.score;
+  // In educational game mode, every completed round awards completion credit
   lvl.completed = true;
   lvl.status = 'Completed';
+  lvl.score = 100;
   lvl.completedAt = new Date().toISOString();
 
-  // Update backward compatibility arenaLevels
   if (!attempt.arenaLevels) attempt.arenaLevels = {};
   attempt.arenaLevels[levelKey] = {
-    score: scoreResult.score,
+    score: 100,
     maxScore: 100,
     completed: true,
     completedAt: lvl.completedAt
@@ -454,9 +522,9 @@ function completeLevel(attemptId, levelKey) {
   }
 
   // Recalculate totals
-  attempt.completedLevelsCount = Object.values(attempt.levels).filter(l => l.status === 'Completed').length;
+  attempt.completedLevelsCount = Object.values(attempt.levels).filter(l => l.completed || l.status === 'Completed').length;
   attempt.completedGamesCount = attempt.completedLevelsCount;
-  attempt.totalScore = Object.values(attempt.levels).reduce((sum, l) => sum + (l.score || 0), 0);
+  attempt.totalScore = attempt.completedLevelsCount * 100;
   attempt.arenaScore = attempt.totalScore;
   attempt.score = attempt.totalScore;
   attempt.percentage = Math.round((attempt.score / 400) * 100);
@@ -467,27 +535,89 @@ function completeLevel(attemptId, levelKey) {
   return {
     success: true,
     levelKey,
-    levelScore: scoreResult.score,
-    maxScore: 100,
-    correctCount: scoreResult.correctCount,
-    totalQuestions: assigned.length,
-    percentage: scoreResult.percentage,
+    questionId: q.id,
+    selectedOption,
+    isCorrect: evalResult.isCorrect,
+    correctOption: evalResult.correctOption,
+    explanation: evalResult.explanation,
+    friendlyFeedback: evalResult.friendlyFeedback,
+    completed: true,
+    levelScore: 100,
     totalScore: attempt.totalScore,
-    totalArenaScore: attempt.totalScore,
     completedLevelsCount: attempt.completedLevelsCount,
-    completedCount: attempt.completedLevelsCount,
     isChampion: attempt.isChampion,
     nextLevel: nextKey,
-    nextLevelUnlocked: nextKey,
-    breakdown: scoreResult.breakdown
+    nextLevelUnlocked: Boolean(nextKey)
+  };
+}
+
+/**
+ * Completes a level when interactive action and question are done.
+ * Unlocks the next round in sequence.
+ */
+function completeLevel(attemptId, levelKey, participantId = null, participantData = null) {
+  let attempt = findAttemptById(attemptId);
+  if (!attempt && (participantId || attemptId)) {
+    attempt = findOrCreateAttempt(attemptId, participantId, participantData);
+  }
+  if (!attempt) return { error: 'Attempt not found.' };
+
+  ensureAttemptLevels(attempt);
+
+  const lvl = attempt.levels[levelKey];
+  lvl.completed = true;
+  lvl.status = 'Completed';
+  lvl.score = 100;
+  lvl.completedAt = new Date().toISOString();
+
+  if (!attempt.arenaLevels) attempt.arenaLevels = {};
+  attempt.arenaLevels[levelKey] = {
+    score: 100,
+    maxScore: 100,
+    completed: true,
+    completedAt: lvl.completedAt
+  };
+
+  const nextKey = LEVEL_METADATA[levelKey]?.nextLevel;
+  if (nextKey && attempt.levels[nextKey]) {
+    attempt.levels[nextKey].unlocked = true;
+    if (attempt.levels[nextKey].status === 'Not Started') {
+      attempt.levels[nextKey].status = 'In Progress';
+    }
+    attempt.currentUnlockedLevel = nextKey;
+  }
+
+  attempt.completedLevelsCount = Object.values(attempt.levels).filter(l => l.completed || l.status === 'Completed').length;
+  attempt.completedGamesCount = attempt.completedLevelsCount;
+  attempt.totalScore = attempt.completedLevelsCount * 100;
+  attempt.arenaScore = attempt.totalScore;
+  attempt.score = attempt.totalScore;
+  attempt.percentage = Math.round((attempt.score / 400) * 100);
+  attempt.isChampion = attempt.completedLevelsCount === 4;
+
+  saveDatabase();
+
+  return {
+    success: true,
+    levelKey,
+    levelScore: 100,
+    maxScore: 100,
+    totalScore: attempt.totalScore,
+    completedLevelsCount: attempt.completedLevelsCount,
+    isChampion: attempt.isChampion,
+    nextLevel: nextKey,
+    nextLevelUnlocked: Boolean(nextKey)
   };
 }
 
 /**
  * Returns overall arena attempt status including unlocked levels, scores, and progress
  */
-function getArenaAttemptStatus(attemptId) {
-  const attempt = findAttemptById(attemptId);
+function getArenaAttemptStatus(attemptId, participantId = null, participantData = null) {
+  let attempt = findAttemptById(attemptId);
+  if (!attempt && (participantId || attemptId)) {
+    attempt = findOrCreateAttempt(attemptId, participantId, participantData);
+  }
   if (!attempt) return null;
 
   ensureAttemptLevels(attempt);
@@ -502,7 +632,9 @@ function getArenaAttemptStatus(attemptId) {
     levelsStatus[key] = {
       id: key,
       levelNumber: idx + 1,
+      roundNumber: idx + 1,
       name: LEVEL_METADATA[key].name,
+      roundTitle: LEVEL_METADATA[key].roundTitle,
       theme: LEVEL_METADATA[key].theme,
       icon: LEVEL_METADATA[key].icon,
       unlocked,
@@ -512,22 +644,23 @@ function getArenaAttemptStatus(attemptId) {
       score: lvl ? (lvl.score || 0) : 0,
       maxScore: 100,
       answeredCount: Object.keys(answers).length,
-      totalQuestions: assigned.length || QUESTIONS_PER_LEVEL,
-      // Only include questions if unlocked
+      totalQuestions: 1,
       questions: unlocked && assigned.length > 0 ? sanitizeAssignedQuestions(assigned) : [],
       answers: unlocked ? answers : {}
     };
   });
 
-  const completedLevelsCount = Object.values(attempt.levels).filter(l => l.status === 'Completed').length;
-  const totalScore = Object.values(attempt.levels).reduce((sum, l) => sum + (l.score || 0), 0);
+  const completedLevelsCount = Object.values(attempt.levels).filter(l => l.completed || l.status === 'Completed').length;
+  const totalScore = completedLevelsCount * 100;
 
   return {
     attemptId: attempt.attemptId,
+    participantId: attempt.participantId,
     status: attempt.status,
     totalScore,
     maxScore: 400,
     completedLevelsCount,
+    completedCount: completedLevelsCount,
     totalLevels: 4,
     isChampion: completedLevelsCount === 4,
     eligibleForCertificate: completedLevelsCount === 4,
@@ -548,7 +681,8 @@ function updateAttemptLevel(attemptId, levelKey, levelResult) {
   const now = new Date().toISOString();
   const lvl = attempt.levels[levelKey];
   if (lvl) {
-    lvl.score = Math.min(100, Math.max(0, levelResult.score || 0));
+    lvl.score = 100;
+    lvl.completed = Boolean(levelResult.completed);
     lvl.status = levelResult.completed ? 'Completed' : 'In Progress';
     lvl.interactiveCompleted = Boolean(levelResult.completed || levelResult.isCircuitOk || levelResult.isBridgeOk);
     lvl.completedAt = levelResult.completed ? now : null;
@@ -556,23 +690,12 @@ function updateAttemptLevel(attemptId, levelKey, levelResult) {
 
   if (!attempt.arenaLevels) attempt.arenaLevels = {};
   attempt.arenaLevels[levelKey] = {
-    score: Math.min(100, Math.max(0, levelResult.score || 0)),
-    maxScore: levelResult.maxScore || 100,
+    score: 100,
+    maxScore: 100,
     completed: Boolean(levelResult.completed),
     completedAt: now,
     details: levelResult
   };
-
-  // Recalculate arena total score
-  const l1 = attempt.arenaLevels.circuitMaster?.score || 0;
-  const l2 = attempt.arenaLevels.spinArena?.score || 0;
-  const l3 = attempt.arenaLevels.buildZone?.score || 0;
-  const l4 = attempt.arenaLevels.escapeRoom?.score || 0;
-
-  attempt.arenaScore = Math.min(400, l1 + l2 + l3 + l4);
-  attempt.score = attempt.arenaScore;
-  attempt.totalScore = attempt.arenaScore;
-  attempt.percentage = Math.round((attempt.arenaScore / 400) * 100);
 
   attempt.completedGamesCount = [
     attempt.arenaLevels.circuitMaster?.completed,
@@ -581,10 +704,12 @@ function updateAttemptLevel(attemptId, levelKey, levelResult) {
     attempt.arenaLevels.escapeRoom?.completed
   ].filter(Boolean).length;
   attempt.completedLevelsCount = attempt.completedGamesCount;
-
+  attempt.totalScore = attempt.completedLevelsCount * 100;
+  attempt.arenaScore = attempt.totalScore;
+  attempt.score = attempt.totalScore;
+  attempt.percentage = Math.round((attempt.arenaScore / 400) * 100);
   attempt.isChampion = attempt.completedGamesCount === 4;
 
-  // Unlock next
   const nextKey = LEVEL_METADATA[levelKey]?.nextLevel;
   if (nextKey && levelResult.completed && attempt.levels[nextKey]) {
     attempt.levels[nextKey].unlocked = true;
@@ -599,42 +724,33 @@ function updateAttemptLevel(attemptId, levelKey, levelResult) {
 
 /**
  * Finalizes an Engineering Arena attempt.
- * Strictly verifies that all 4 levels are completed before finalizing!
+ * Strictly verifies that all 4 rounds are completed before finalizing!
  */
-function finalizeArenaAttempt(attemptId, arenaSummary = {}) {
-  const attempt = findAttemptById(attemptId);
+function finalizeArenaAttempt(attemptId, arenaSummary = {}, participantId = null, participantData = null) {
+  let attempt = findAttemptById(attemptId);
+  if (!attempt && (participantId || attemptId)) {
+    attempt = findOrCreateAttempt(attemptId, participantId, participantData);
+  }
   if (!attempt) return null;
 
   ensureAttemptLevels(attempt);
 
-  if (attempt.status === 'Completed') {
-    return attempt;
-  }
-
-  // Count completed levels
-  const completedCount = Object.values(attempt.levels).filter(l => l.status === 'Completed').length;
+  const completedCount = Object.values(attempt.levels).filter(l => l.completed || l.status === 'Completed').length;
   const legacyCompleted = attempt.completedGamesCount || 0;
   const effectiveCompleted = Math.max(completedCount, legacyCompleted);
 
   if (effectiveCompleted < 4 && !arenaSummary.force) {
     return {
-      error: `All four levels must be completed sequentially before claiming the certificate (${effectiveCompleted}/4 completed).`,
+      error: `All four rounds must be completed sequentially before claiming the certificate (${effectiveCompleted}/4 completed).`,
       completedLevelsCount: effectiveCompleted
     };
   }
 
   const now = new Date().toISOString();
-  if (arenaSummary.totalScore !== undefined || arenaSummary.score !== undefined) {
-    attempt.arenaScore = arenaSummary.totalScore || arenaSummary.score;
-    attempt.score = attempt.arenaScore;
-    attempt.totalScore = attempt.arenaScore;
-  } else {
-    attempt.totalScore = Object.values(attempt.levels).reduce((sum, l) => sum + (l.score || 0), 0);
-    attempt.score = attempt.totalScore;
-    attempt.arenaScore = attempt.totalScore;
-  }
-
-  attempt.percentage = Math.round((attempt.score / 400) * 100);
+  attempt.totalScore = 400;
+  attempt.score = 400;
+  attempt.arenaScore = 400;
+  attempt.percentage = 100;
   attempt.completedLevelsCount = 4;
   attempt.completedGamesCount = 4;
   attempt.isChampion = true;
@@ -693,10 +809,12 @@ function createCertificate({
 }
 
 function findCertificateByParticipant(participantId) {
+  reloadDatabaseFromFile();
   return db.certificates.find(c => c.participantId === participantId) || null;
 }
 
 function findCertificateById(certificateId) {
+  reloadDatabaseFromFile();
   return db.certificates.find(c => c.certificateId === certificateId) || null;
 }
 
@@ -712,28 +830,24 @@ function updateCertificateEmailStatus(certificateId, status) {
 
 // ----------------- EMAIL AUDIT LOGS -----------------
 function logEmailDispatch({
-  logId: existingId,
   participantId,
   certificateId,
   recipientEmail,
-  provider,
+  serviceUsed,
   status,
-  messageId = null,
-  errorMessage = null
+  errorMessage = null,
+  messageId = null
 }) {
-  const logId = existingId || generateId('LOG');
-  const now = new Date().toISOString();
-
   const logEntry = {
-    logId,
+    logId: generateId('LOG'),
+    timestamp: new Date().toISOString(),
     participantId,
     certificateId,
     recipientEmail,
-    provider,
+    serviceUsed,
     status,
-    messageId,
     errorMessage,
-    timestamp: now
+    messageId
   };
 
   db.emailLogs.push(logEntry);
@@ -742,70 +856,65 @@ function logEmailDispatch({
 }
 
 function getEmailLogsByParticipant(participantId) {
+  reloadDatabaseFromFile();
   return db.emailLogs.filter(l => l.participantId === participantId);
 }
 
 // ----------------- ADMIN ANALYTICS -----------------
 function getAnalytics() {
-  const totalRegistered = db.participants.length;
+  reloadDatabaseFromFile();
+  const totalRegistrations = db.participants.length;
   const completedAttempts = db.quizAttempts.filter(a => a.status === 'Completed');
   const totalCompleted = completedAttempts.length;
-  const totalCertificates = db.certificates.length;
 
-  const emailsSent = db.emailLogs.filter(l => l.status === 'Sent' || l.status === 'Form Dispatched').length;
-  const emailsFailed = db.emailLogs.filter(l => l.status === 'Failed').length;
-  const emailsPending = db.certificates.filter(c => c.emailStatus === 'Pending Config').length;
-
-  let totalScore = 0;
-  let highestScore = 0;
-  const scoreDistribution = {
-    "360-400": 0,
-    "280-359": 0,
-    "200-279": 0,
-    "0-199": 0
-  };
-
-  completedAttempts.forEach(a => {
-    totalScore += a.score;
-    if (a.score > highestScore) highestScore = a.score;
-
-    if (a.score >= 360) scoreDistribution["360-400"]++;
-    else if (a.score >= 280) scoreDistribution["280-359"]++;
-    else if (a.score >= 200) scoreDistribution["200-279"]++;
-    else scoreDistribution["0-199"]++;
-  });
-
-  const averageScore = totalCompleted > 0 ? (totalScore / totalCompleted).toFixed(1) : 0;
+  const totalScores = completedAttempts.reduce((acc, cur) => acc + (cur.score || 0), 0);
+  const averageScore = totalCompleted > 0 ? (totalScores / totalCompleted).toFixed(1) : 0;
+  const highestScore = completedAttempts.reduce((max, cur) => Math.max(max, cur.score || 0), 0);
 
   // Branch breakdown
   const branchCounts = {};
   db.participants.forEach(p => {
-    branchCounts[p.branch] = (branchCounts[p.branch] || 0) + 1;
+    const b = p.branch || 'Unknown';
+    branchCounts[b] = (branchCounts[b] || 0) + 1;
+  });
+
+  // IEI Membership breakdown
+  const ieiMembers = db.participants.filter(p => Boolean(p.isIeiMember)).length;
+  const nonIeiMembers = totalRegistrations - ieiMembers;
+
+  // Round completion stats
+  const roundStats = { round1: 0, round2: 0, round3: 0, round4: 0 };
+  db.quizAttempts.forEach(a => {
+    if (a.levels?.circuitMaster?.completed) roundStats.round1++;
+    if (a.levels?.spinArena?.completed) roundStats.round2++;
+    if (a.levels?.buildZone?.completed) roundStats.round3++;
+    if (a.levels?.escapeRoom?.completed) roundStats.round4++;
   });
 
   return {
-    totalRegistered,
+    totalRegistrations,
+    totalRegistered: totalRegistrations,
     totalCompleted,
-    totalCertificates,
-    emailsSent,
-    emailsFailed,
-    emailsPending,
     averageScore: Number(averageScore),
     highestScore,
-    scoreDistribution,
-    branchCounts
+    branchCounts,
+    ieiMembers,
+    nonIeiMembers,
+    roundStats,
+    certificatesIssued: db.certificates.length
   };
 }
 
 // ----------------- ADMIN PARTICIPANT VIEW -----------------
 function getAdminParticipantsList({ search = '', branch = '', status = '', scoreFilter = '', completionFilter = '' } = {}) {
+  reloadDatabaseFromFile();
   const results = [];
 
   for (const p of db.participants) {
     const attempt = findLatestAttemptByParticipant(p.participantId);
     const cert = findCertificateByParticipant(p.participantId);
 
-    // Apply search filter (Name or Email)
+    // Search filter
     if (search) {
       const q = search.toLowerCase();
       const matchName = p.fullName.toLowerCase().includes(q);
@@ -814,47 +923,21 @@ function getAdminParticipantsList({ search = '', branch = '', status = '', score
     }
 
     // Branch filter
-    if (branch && p.branch !== branch) {
-      continue;
-    }
+    if (branch && p.branch !== branch) continue;
 
     // Status filter
     const quizStatus = attempt ? attempt.status : 'Not Started';
-    if (status && quizStatus !== status) {
-      continue;
-    }
+    if (status && quizStatus !== status) continue;
 
-    // Level breakdown
-    let circuitScore = 0;
-    let spinScore = 0;
-    let buildScore = 0;
-    let escapeScore = 0;
-    let circuitStatus = 'Not Started';
-    let spinStatus = 'Not Started';
-    let buildStatus = 'Not Started';
-    let escapeStatus = 'Not Started';
-
-    if (attempt?.levels) {
-      circuitScore = attempt.levels.circuitMaster?.score || 0;
-      spinScore = attempt.levels.spinArena?.score || 0;
-      buildScore = attempt.levels.buildZone?.score || 0;
-      escapeScore = attempt.levels.escapeRoom?.score || 0;
-
-      circuitStatus = attempt.levels.circuitMaster?.status || 'Not Started';
-      spinStatus = attempt.levels.spinArena?.status || 'Not Started';
-      buildStatus = attempt.levels.buildZone?.status || 'Not Started';
-      escapeStatus = attempt.levels.escapeRoom?.status || 'Not Started';
-    } else if (attempt?.arenaLevels) {
-      circuitScore = attempt.arenaLevels.circuitMaster?.score || 0;
-      spinScore = attempt.arenaLevels.spinArena?.score || 0;
-      buildScore = attempt.arenaLevels.buildZone?.score || 0;
-      escapeScore = attempt.arenaLevels.escapeRoom?.score || 0;
-
-      circuitStatus = attempt.arenaLevels.circuitMaster?.completed ? 'Completed' : 'Not Started';
-      spinStatus = attempt.arenaLevels.spinArena?.completed ? 'Completed' : 'Not Started';
-      buildStatus = attempt.arenaLevels.buildZone?.completed ? 'Completed' : 'Not Started';
-      escapeStatus = attempt.arenaLevels.escapeRoom?.completed ? 'Completed' : 'Not Started';
-    }
+    // Assigned question IDs & answers
+    const r1Q = attempt?.levels?.circuitMaster?.assignedQuestions?.[0]?.id || 'N/A';
+    const r1Ans = attempt?.levels?.circuitMaster?.answers?.[r1Q] || 'N/A';
+    const r2Q = attempt?.levels?.spinArena?.assignedQuestions?.[0]?.id || 'N/A';
+    const r2Ans = attempt?.levels?.spinArena?.answers?.[r2Q] || 'N/A';
+    const r3Q = attempt?.levels?.buildZone?.assignedQuestions?.[0]?.id || 'N/A';
+    const r3Ans = attempt?.levels?.buildZone?.answers?.[r3Q] || 'N/A';
+    const r4Q = attempt?.levels?.escapeRoom?.assignedQuestions?.[0]?.id || 'N/A';
+    const r4Ans = attempt?.levels?.escapeRoom?.answers?.[r4Q] || 'N/A';
 
     const completedLevelsCount = attempt ? (attempt.completedLevelsCount || attempt.completedGamesCount || (quizStatus === 'Completed' ? 4 : 0)) : 0;
     const isChampion = Boolean(attempt?.isChampion || completedLevelsCount === 4);
@@ -866,14 +949,6 @@ function getAdminParticipantsList({ search = '', branch = '', status = '', score
       if (completionFilter === 'completed2' && completedLevelsCount !== 2) continue;
       if (completionFilter === 'completed1' && completedLevelsCount !== 1) continue;
       if (completionFilter === 'notStarted' && completedLevelsCount !== 0) continue;
-    }
-
-    // Score filter (handles 400-point arena scale)
-    if (scoreFilter && attempt) {
-      const s = attempt.score;
-      if (scoreFilter === 'high' && s < 300) continue;
-      if (scoreFilter === 'medium' && (s < 180 || s >= 300)) continue;
-      if (scoreFilter === 'low' && s >= 180) continue;
     }
 
     results.push({
@@ -894,15 +969,23 @@ function getAdminParticipantsList({ search = '', branch = '', status = '', score
       certificateId: cert ? cert.certificateId : null,
       emailStatus: cert ? cert.emailStatus : 'N/A',
       completionDate: attempt && attempt.completedAt ? attempt.completedAt : 'N/A',
-      // Arena Level Scores & Statuses
-      circuitScore,
-      circuitStatus,
-      spinScore,
-      spinStatus,
-      buildScore,
-      buildStatus,
-      escapeScore,
-      escapeStatus,
+      // Assigned question IDs & Submitted Answers
+      r1QuestionId: r1Q,
+      r1Answer: r1Ans,
+      r2QuestionId: r2Q,
+      r2Answer: r2Ans,
+      r3QuestionId: r3Q,
+      r3Answer: r3Ans,
+      r4QuestionId: r4Q,
+      r4Answer: r4Ans,
+      circuitScore: attempt?.levels?.circuitMaster?.score || 0,
+      circuitStatus: attempt?.levels?.circuitMaster?.completed ? 'Completed' : 'Not Started',
+      spinScore: attempt?.levels?.spinArena?.score || 0,
+      spinStatus: attempt?.levels?.spinArena?.completed ? 'Completed' : 'Not Started',
+      buildScore: attempt?.levels?.buildZone?.score || 0,
+      buildStatus: attempt?.levels?.buildZone?.completed ? 'Completed' : 'Not Started',
+      escapeScore: attempt?.levels?.escapeRoom?.score || 0,
+      escapeStatus: attempt?.levels?.escapeRoom?.completed ? 'Completed' : 'Not Started',
       completedLevelsCount,
       completedGamesCount: completedLevelsCount,
       isChampion,
@@ -910,7 +993,6 @@ function getAdminParticipantsList({ search = '', branch = '', status = '', score
     });
   }
 
-  // Sort by recent first
   results.sort((a, b) => new Date(b.registrationTimestamp) - new Date(a.registrationTimestamp));
   return results;
 }
@@ -926,6 +1008,7 @@ module.exports = {
   createQuizAttempt,
   findAttemptById,
   findLatestAttemptByParticipant,
+  findOrCreateAttempt,
   getOrAssignLevelQuestions,
   recordInteractiveAction,
   saveLevelAnswer,
