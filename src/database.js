@@ -80,9 +80,20 @@ function generateId(prefix = 'TYEB') {
 }
 
 // ----------------- PARTICIPANTS -----------------
-function createParticipant({ participantId: existingId, fullName, email, branch, collegeName = "" }) {
+function createParticipant({
+  participantId: existingId,
+  fullName,
+  email,
+  branch,
+  collegeName = "",
+  isIeiMember = false,
+  ieiMembershipId = null
+}) {
   const participantId = existingId || generateId('PART');
   const now = new Date().toISOString();
+
+  const isMemberBool = Boolean(isIeiMember);
+  const cleanMemberId = isMemberBool && ieiMembershipId ? String(ieiMembershipId).trim() : null;
 
   const participant = {
     participantId,
@@ -90,6 +101,8 @@ function createParticipant({ participantId: existingId, fullName, email, branch,
     email: email.trim().toLowerCase(),
     branch: branch.trim(),
     collegeName: (collegeName || "").trim(),
+    isIeiMember: isMemberBool,
+    ieiMembershipId: cleanMemberId,
     registrationTimestamp: now
   };
 
@@ -342,6 +355,8 @@ function getAdminParticipantsList({ search = '', branch = '', status = '', score
       email: p.email,
       branch: p.branch,
       collegeName: p.collegeName || 'N/A',
+      isIeiMember: Boolean(p.isIeiMember),
+      ieiMembershipId: p.ieiMembershipId || null,
       registrationTimestamp: p.registrationTimestamp,
       attemptId: attempt ? attempt.attemptId : null,
       score: attempt ? attempt.score : 0,

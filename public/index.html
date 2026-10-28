@@ -126,6 +126,34 @@
                 </div>
               </div>
 
+              <!-- IEI Membership Question & Options -->
+              <div class="form-group">
+                <label class="form-label">Are you an IEI (Institution of Engineers) Member? <span class="required">*</span></label>
+                <div class="iei-choice-group">
+                  <label class="iei-choice-card active" id="ieiChoiceNoCard">
+                    <input type="radio" name="isIeiMember" value="no" id="ieiMemberNo" checked>
+                    <span class="choice-indicator"></span>
+                    <span class="choice-text">No, Not a Member</span>
+                  </label>
+                  <label class="iei-choice-card" id="ieiChoiceYesCard">
+                    <input type="radio" name="isIeiMember" value="yes" id="ieiMemberYes">
+                    <span class="choice-indicator"></span>
+                    <span class="choice-text">Yes, I am an IEI Member</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Conditional IEI Membership ID Input Field -->
+              <div class="form-group" id="ieiMembershipIdGroup" style="display: none;">
+                <label for="ieiMembershipId">IEI Membership Number / Student Chapter ID <span class="required">*</span></label>
+                <div class="input-wrapper">
+                  <span class="input-icon">🆔</span>
+                  <input type="text" id="ieiMembershipId" name="ieiMembershipId" placeholder="e.g. SM-1029384 or IEI/2026/042" autocomplete="off">
+                </div>
+                <small class="input-hint">Enter your official IEI Student / Associate / Corporate Membership Number.</small>
+                <div class="field-error" id="ieiMemberIdError"></div>
+              </div>
+
               <div class="form-alert" id="formAlert" style="display:none;"></div>
 
               <button type="submit" id="startQuizBtn" class="btn btn-primary btn-block btn-pulse">

@@ -112,6 +112,42 @@ async function executeSuite() {
     assert.strictEqual(found.participantId, p.participantId);
   });
 
+  runTest('Participant with IEI membership persists isIeiMember and ieiMembershipId correctly', () => {
+    const p = db.createParticipant({
+      fullName: 'Pooja Sundaram',
+      email: 'pooja.sundaram@gmail.com',
+      branch: 'Electrical and Electronics Engineering (EEE)',
+      collegeName: 'Dr. M.G.R. Educational and Research Institute',
+      isIeiMember: true,
+      ieiMembershipId: 'SM-9876543'
+    });
+
+    assert.strictEqual(p.isIeiMember, true);
+    assert.strictEqual(p.ieiMembershipId, 'SM-9876543');
+
+    const found = db.findParticipantById(p.participantId);
+    assert.strictEqual(found.isIeiMember, true);
+    assert.strictEqual(found.ieiMembershipId, 'SM-9876543');
+  });
+
+  runTest('Participant without IEI membership persists isIeiMember=false and allows direct quiz attempt', () => {
+    const p = db.createParticipant({
+      fullName: 'Rahul Nambiar',
+      email: 'rahul.nambiar@gmail.com',
+      branch: 'Cyber Security',
+      collegeName: 'Dr. M.G.R. Educational and Research Institute',
+      isIeiMember: false,
+      ieiMembershipId: null
+    });
+
+    assert.strictEqual(p.isIeiMember, false);
+    assert.strictEqual(p.ieiMembershipId, null);
+
+    const attempt = db.createQuizAttempt(p.participantId);
+    assert.ok(attempt.attemptId);
+    assert.strictEqual(attempt.status, 'In Progress');
+  });
+
   runTest('Quiz attempt tracks status from In Progress to Completed', () => {
     const p = db.createParticipant({
       fullName: 'Ananya Deshmukh',

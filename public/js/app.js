@@ -289,6 +289,61 @@ function setupRegistration() {
   const collegeInput = document.getElementById('collegeName');
   const alertBox = document.getElementById('formAlert');
 
+  // IEI Membership Elements
+  const ieiMemberYesRadio = document.getElementById('ieiMemberYes');
+  const ieiMemberNoRadio = document.getElementById('ieiMemberNo');
+  const ieiChoiceYesCard = document.getElementById('ieiChoiceYesCard');
+  const ieiChoiceNoCard = document.getElementById('ieiChoiceNoCard');
+  const ieiMembershipIdGroup = document.getElementById('ieiMembershipIdGroup');
+  const ieiMembershipIdInput = document.getElementById('ieiMembershipId');
+  const ieiMemberIdError = document.getElementById('ieiMemberIdError');
+
+  function updateIeiMembershipUI() {
+    const isYes = Boolean(ieiMemberYesRadio && ieiMemberYesRadio.checked);
+    if (ieiChoiceYesCard) ieiChoiceYesCard.classList.toggle('active', isYes);
+    if (ieiChoiceNoCard) ieiChoiceNoCard.classList.toggle('active', !isYes);
+
+    if (ieiMembershipIdGroup) {
+      if (isYes) {
+        ieiMembershipIdGroup.style.display = 'block';
+        ieiMembershipIdGroup.classList.add('iei-id-animate');
+        if (ieiMembershipIdInput) {
+          setTimeout(() => ieiMembershipIdInput.focus(), 60);
+        }
+      } else {
+        ieiMembershipIdGroup.style.display = 'none';
+        if (ieiMembershipIdInput) ieiMembershipIdInput.value = '';
+        if (ieiMemberIdError) ieiMemberIdError.textContent = '';
+      }
+    }
+  }
+
+  if (ieiMemberYesRadio) ieiMemberYesRadio.addEventListener('change', updateIeiMembershipUI);
+  if (ieiMemberNoRadio) ieiMemberNoRadio.addEventListener('change', updateIeiMembershipUI);
+
+  if (ieiChoiceYesCard) {
+    ieiChoiceYesCard.addEventListener('click', () => {
+      if (ieiMemberYesRadio) {
+        ieiMemberYesRadio.checked = true;
+        updateIeiMembershipUI();
+      }
+    });
+  }
+  if (ieiChoiceNoCard) {
+    ieiChoiceNoCard.addEventListener('click', () => {
+      if (ieiMemberNoRadio) {
+        ieiMemberNoRadio.checked = true;
+        updateIeiMembershipUI();
+      }
+    });
+  }
+
+  if (ieiMembershipIdInput) {
+    ieiMembershipIdInput.addEventListener('input', () => {
+      if (ieiMemberIdError) ieiMemberIdError.textContent = '';
+    });
+  }
+
   // Clear errors on input
   nameInput.addEventListener('input', () => document.getElementById('nameError').textContent = '');
   emailInput.addEventListener('input', () => document.getElementById('emailError').textContent = '');
@@ -323,6 +378,17 @@ function setupRegistration() {
       valid = false;
     }
 
+    // IEI Membership validation
+    const isIeiMember = Boolean(ieiMemberYesRadio && ieiMemberYesRadio.checked);
+    const ieiMembershipId = ieiMembershipIdInput ? ieiMembershipIdInput.value.trim() : '';
+
+    if (isIeiMember) {
+      if (!ieiMembershipId || ieiMembershipId.length < 2) {
+        if (ieiMemberIdError) ieiMemberIdError.textContent = 'Please enter your official IEI Membership Number.';
+        valid = false;
+      }
+    }
+
     if (!valid) {
       AudioFX.playClick();
       return;
@@ -336,7 +402,14 @@ function setupRegistration() {
       const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fullName, email, branch, collegeName })
+        body: JSON.stringify({
+          fullName,
+          email,
+          branch,
+          collegeName,
+          isIeiMember,
+          ieiMembershipId: isIeiMember ? ieiMembershipId : null
+        })
       });
 
       const data = await res.json();
@@ -1198,7 +1271,10 @@ function renderParticipantsTable(participants = []) {
 
     tr.innerHTML = `
       <td>
-        <div class="p-name">${p.fullName}</div>
+        <div class="p-name">
+          ${p.fullName}
+          ${p.isIeiMember ? `<span class="badge-pill" style="font-size:10px; padding:1px 6px; margin-left:6px; color:var(--accent-gold); border-color:rgba(255,209,102,0.4);" title="IEI Membership: ${p.ieiMembershipId || 'Verified Member'}">🎖️ IEI Member</span>` : ''}
+        </div>
         <div class="p-email">${p.email}</div>
       </td>
       <td><span style="font-size:12px;">${p.branch}</span></td>
@@ -1284,6 +1360,7 @@ async function openParticipantDetailModal(participantId) {
         <div><strong>Email:</strong> ${participant.email}</div>
         <div><strong>Branch:</strong> ${participant.branch}</div>
         <div><strong>College:</strong> ${participant.collegeName || 'Dr. M.G.R. Educational and Research Institute'}</div>
+        <div><strong>IEI Member:</strong> ${participant.isIeiMember ? `<span style="color:var(--accent-gold); font-weight:700;">Yes (${participant.ieiMembershipId || 'Verified'})</span>` : '<span style="color:var(--text-muted);">No</span>'}</div>
         <div><strong>Score:</strong> ${attempt ? attempt.score : 0} / 10 (${attempt ? attempt.percentage : 0}%)</div>
         <div><strong>Status:</strong> ${attempt ? attempt.status : 'Not Started'}</div>
         <div><strong>Certificate ID:</strong> ${certificate ? certificate.certificateId : 'None'}</div>

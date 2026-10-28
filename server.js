@@ -48,7 +48,7 @@ function requireAdmin(req, res, next) {
 // 1. Participant Registration
 app.post('/api/register', (req, res) => {
   try {
-    const { fullName, email, branch, collegeName } = req.body;
+    const { fullName, email, branch, collegeName, isIeiMember, ieiMembershipId } = req.body;
 
     // Strict Validation
     if (!fullName || typeof fullName !== 'string' || fullName.trim().length < 2) {
@@ -81,6 +81,14 @@ app.post('/api/register', (req, res) => {
       return res.status(400).json({ error: 'Please select a valid engineering branch from the list.' });
     }
 
+    // IEI Membership validation
+    const isMemberBool = isIeiMember === true || isIeiMember === 'yes' || isIeiMember === 'true';
+    const cleanMemberId = isMemberBool && typeof ieiMembershipId === 'string' ? ieiMembershipId.trim() : null;
+
+    if (isMemberBool && (!cleanMemberId || cleanMemberId.length < 2)) {
+      return res.status(400).json({ error: 'Please enter your official IEI Membership Number.' });
+    }
+
     // Check if participant already exists
     let participant = db.findParticipantByEmail(email);
     if (!participant) {
@@ -88,8 +96,14 @@ app.post('/api/register', (req, res) => {
         fullName,
         email,
         branch,
-        collegeName: collegeName || ''
+        collegeName: collegeName || '',
+        isIeiMember: isMemberBool,
+        ieiMembershipId: cleanMemberId
       });
+    } else {
+      participant.isIeiMember = isMemberBool;
+      participant.ieiMembershipId = cleanMemberId;
+      if (branch && validBranches.includes(branch)) participant.branch = branch;
     }
 
     // Check if participant already has a completed attempt
@@ -120,7 +134,9 @@ app.post('/api/register', (req, res) => {
         fullName: participant.fullName,
         email: participant.email,
         branch: participant.branch,
-        collegeName: participant.collegeName
+        collegeName: participant.collegeName,
+        isIeiMember: Boolean(participant.isIeiMember),
+        ieiMembershipId: participant.ieiMembershipId || null
       },
       attempt: {
         attemptId: attempt.attemptId,
@@ -168,7 +184,9 @@ app.post('/api/quiz/submit', async (req, res) => {
           fullName: pPayload.fullName || 'Participant',
           email: pPayload.email || 'participant@drmgrdu.ac.in',
           branch: pPayload.branch || 'Other',
-          collegeName: pPayload.collegeName || ''
+          collegeName: pPayload.collegeName || '',
+          isIeiMember: Boolean(pPayload.isIeiMember),
+          ieiMembershipId: pPayload.ieiMembershipId || null
         });
       }
     }
@@ -180,7 +198,9 @@ app.post('/api/quiz/submit', async (req, res) => {
         fullName: (pPayload && pPayload.fullName) ? pPayload.fullName : 'Engineering Participant',
         email: (pPayload && pPayload.email) ? pPayload.email : 'iei@drmgrdu.ac.in',
         branch: (pPayload && pPayload.branch) ? pPayload.branch : 'Other',
-        collegeName: (pPayload && pPayload.collegeName) ? pPayload.collegeName : 'Dr. M.G.R. Educational and Research Institute'
+        collegeName: (pPayload && pPayload.collegeName) ? pPayload.collegeName : 'Dr. M.G.R. Educational and Research Institute',
+        isIeiMember: Boolean(pPayload && pPayload.isIeiMember),
+        ieiMembershipId: pPayload ? pPayload.ieiMembershipId : null
       });
     }
 
@@ -541,6 +561,8 @@ app.get('/api/admin/export-csv', requireAdmin, (req, res) => {
       'Email Address',
       'Engineering Branch',
       'College Name',
+      'IEI Member',
+      'IEI Membership ID',
       'Registration Timestamp',
       'Score (out of 10)',
       'Percentage (%)',
@@ -563,6 +585,8 @@ app.get('/api/admin/export-csv', requireAdmin, (req, res) => {
       escapeCsv(p.email),
       escapeCsv(p.branch),
       escapeCsv(p.collegeName),
+      escapeCsv(p.isIeiMember ? 'Yes' : 'No'),
+      escapeCsv(p.ieiMembershipId || 'N/A'),
       escapeCsv(p.registrationTimestamp),
       escapeCsv(p.score),
       escapeCsv(p.percentage),
