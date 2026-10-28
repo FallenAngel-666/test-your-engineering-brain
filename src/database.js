@@ -124,7 +124,7 @@ function getAllParticipants() {
   return [...db.participants];
 }
 
-// ----------------- QUIZ ATTEMPTS -----------------
+// ----------------- QUIZ & ARENA ATTEMPTS -----------------
 function createQuizAttempt(participantId, existingAttemptId) {
   const attemptId = existingAttemptId || generateId('ATT');
   const now = new Date().toISOString();
@@ -139,7 +139,18 @@ function createQuizAttempt(participantId, existingAttemptId) {
     incorrectAnswers: 0,
     status: 'In Progress', // 'Not Started', 'In Progress', 'Completed'
     startedAt: now,
-    completedAt: null
+    completedAt: null,
+    // Engineering Arena 4-Level Progress
+    arenaLevels: {
+      circuitMaster: { score: 0, maxScore: 100, completed: false, completedAt: null },
+      spinArena: { score: 0, maxScore: 100, completed: false, completedAt: null },
+      buildZone: { score: 0, maxScore: 100, completed: false, completedAt: null },
+      escapeRoom: { score: 0, maxScore: 100, completed: false, completedAt: null }
+    },
+    arenaScore: 0,
+    arenaMaxScore: 400,
+    completedGamesCount: 0,
+    isChampion: false
   };
 
   db.quizAttempts.push(attempt);
@@ -155,6 +166,84 @@ function findLatestAttemptByParticipant(participantId) {
   const attempts = db.quizAttempts.filter(a => a.participantId === participantId);
   if (attempts.length === 0) return null;
   return attempts[attempts.length - 1];
+}
+
+function updateAttemptLevel(attemptId, levelKey, levelResult) {
+  const attempt = findAttemptById(attemptId);
+  if (!attempt) return null;
+
+  if (!attempt.arenaLevels) {
+    attempt.arenaLevels = {
+      circuitMaster: { score: 0, maxScore: 100, completed: false, completedAt: null },
+      spinArena: { score: 0, maxScore: 100, completed: false, completedAt: null },
+      buildZone: { score: 0, maxScore: 100, completed: false, completedAt: null },
+      escapeRoom: { score: 0, maxScore: 100, completed: false, completedAt: null }
+    };
+  }
+
+  const now = new Date().toISOString();
+  attempt.arenaLevels[levelKey] = {
+    score: Math.min(100, Math.max(0, levelResult.score || 0)),
+    maxScore: levelResult.maxScore || 100,
+    completed: Boolean(levelResult.completed),
+    completedAt: now,
+    details: levelResult
+  };
+
+  // Recalculate arena total score
+  const l1 = attempt.arenaLevels.circuitMaster?.score || 0;
+  const l2 = attempt.arenaLevels.spinArena?.score || 0;
+  const l3 = attempt.arenaLevels.buildZone?.score || 0;
+  const l4 = attempt.arenaLevels.escapeRoom?.score || 0;
+
+  attempt.arenaScore = Math.min(400, l1 + l2 + l3 + l4);
+  attempt.score = attempt.arenaScore;
+  attempt.percentage = Math.round((attempt.arenaScore / 400) * 100);
+
+  attempt.completedGamesCount = [
+    attempt.arenaLevels.circuitMaster?.completed,
+    attempt.arenaLevels.spinArena?.completed,
+    attempt.arenaLevels.buildZone?.completed,
+    attempt.arenaLevels.escapeRoom?.completed
+  ].filter(Boolean).length;
+
+  attempt.isChampion = attempt.completedGamesCount === 4;
+
+  saveDatabase();
+  return attempt;
+}
+
+function finalizeArenaAttempt(attemptId, arenaSummary = {}) {
+  const attempt = findAttemptById(attemptId);
+  if (!attempt) return null;
+
+  if (attempt.status === 'Completed') {
+    return { error: 'Attempt already submitted and finalized.' };
+  }
+
+  const now = new Date().toISOString();
+  if (arenaSummary.levels) {
+    attempt.arenaLevels = arenaSummary.levels;
+  }
+  if (arenaSummary.totalScore !== undefined) {
+    attempt.arenaScore = arenaSummary.totalScore;
+    attempt.score = arenaSummary.totalScore;
+  }
+  if (arenaSummary.percentage !== undefined) {
+    attempt.percentage = arenaSummary.percentage;
+  } else {
+    attempt.percentage = Math.round((attempt.score / 400) * 100);
+  }
+  if (arenaSummary.completedCount !== undefined) {
+    attempt.completedGamesCount = arenaSummary.completedCount;
+  }
+  attempt.isChampion = Boolean(attempt.completedGamesCount === 4 || arenaSummary.isChampion);
+
+  attempt.status = 'Completed';
+  attempt.completedAt = now;
+
+  saveDatabase();
+  return attempt;
 }
 
 function completeQuizAttempt(attemptId, evaluationResult, answers) {
@@ -342,12 +431,21 @@ function getAdminParticipantsList({ search = '', branch = '', status = '', score
       continue;
     }
 
-    // Score filter
+    // Score filter (handles both 400-point arena scale and legacy 10-point scale)
     if (scoreFilter && attempt) {
-      if (scoreFilter === 'high' && attempt.score < 9) continue;
-      if (scoreFilter === 'medium' && (attempt.score < 5 || attempt.score > 8)) continue;
-      if (scoreFilter === 'low' && attempt.score > 4) continue;
+      const s = attempt.score;
+      if (scoreFilter === 'high' && (s < 9 || (s > 10 && s < 300))) continue;
+      if (scoreFilter === 'medium' && ((s < 5 || s > 8) && (s < 180 || s > 299))) continue;
+      if (scoreFilter === 'low' && (s > 4 && s < 180)) continue;
     }
+
+    const arena = attempt?.arenaLevels || {};
+    const circuitScore = arena.circuitMaster?.score ?? (attempt ? attempt.score : 0);
+    const spinScore = arena.spinArena?.score ?? 0;
+    const buildScore = arena.buildZone?.score ?? 0;
+    const escapeScore = arena.escapeRoom?.score ?? 0;
+    const completedGamesCount = attempt?.completedGamesCount ?? (quizStatus === 'Completed' ? 4 : 0);
+    const isChampion = Boolean(attempt?.isChampion || (completedGamesCount === 4));
 
     results.push({
       participantId: p.participantId,
@@ -365,7 +463,15 @@ function getAdminParticipantsList({ search = '', branch = '', status = '', score
       certificateStatus: cert ? 'Generated' : 'Not Generated',
       certificateId: cert ? cert.certificateId : null,
       emailStatus: cert ? cert.emailStatus : 'N/A',
-      completionDate: attempt && attempt.completedAt ? attempt.completedAt : 'N/A'
+      completionDate: attempt && attempt.completedAt ? attempt.completedAt : 'N/A',
+      // Arena Game Breakdown
+      circuitScore,
+      spinScore,
+      buildScore,
+      escapeScore,
+      completedGamesCount,
+      isChampion,
+      arenaLevels: arena
     });
   }
 
@@ -385,6 +491,8 @@ module.exports = {
   createQuizAttempt,
   findAttemptById,
   findLatestAttemptByParticipant,
+  updateAttemptLevel,
+  finalizeArenaAttempt,
   completeQuizAttempt,
   createCertificate,
   findCertificateById,

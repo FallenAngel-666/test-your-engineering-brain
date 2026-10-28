@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const db = require('./src/database');
 const { getSanitizedQuestions, evaluateQuiz, questions } = require('./src/questions');
+const arenaGames = require('./src/arenaGames');
 const { generateCertificatePdf } = require('./src/certificateGenerator');
 const { sendCertificateEmail, buildEmailContent } = require('./src/emailService');
 
@@ -273,6 +274,149 @@ async function executeSuite() {
     const list = db.getAdminParticipantsList({ search: 'Deshmukh' });
     assert.ok(list.length >= 1, 'Should find at least one participant matching Deshmukh');
     assert.ok(list.every(p => p.fullName.includes('Deshmukh') || p.email.includes('deshmukh')));
+  });
+
+  // 9. ENGINEERING ARENA: 4 Interactive Levels Validation
+  runTest('Arena configuration returns all 4 levels without exposing answers', () => {
+    const config = arenaGames.getSanitizedArenaConfig();
+    assert.ok(config.level1 && config.level2 && config.level3 && config.level4);
+    assert.strictEqual(config.level1.id, 'circuitMaster');
+    assert.strictEqual(config.level2.id, 'spinArena');
+    assert.strictEqual(config.level3.id, 'buildZone');
+    assert.strictEqual(config.level4.id, 'escapeRoom');
+    assert.strictEqual(config.level1.correctOption, undefined);
+    assert.strictEqual(config.level3.correctOption, undefined);
+  });
+
+  runTest('Level 1: Circuit Master verifies wire connection & theory question', () => {
+    const valid = arenaGames.validateLevel1({ wireConnected: true, selectedOption: 'A' });
+    assert.strictEqual(valid.correct, true);
+    assert.strictEqual(valid.score, 100);
+    assert.strictEqual(valid.message, 'Circuit Master Unlocked!');
+
+    const incomplete = arenaGames.validateLevel1({ wireConnected: false, selectedOption: 'A' });
+    assert.strictEqual(incomplete.correct, false);
+    assert.strictEqual(incomplete.score, 0);
+
+    const wrongAnswer = arenaGames.validateLevel1({ wireConnected: true, selectedOption: 'B' });
+    assert.strictEqual(wrongAnswer.score, 50); // Partial credit for closing circuit
+  });
+
+  runTest('Level 2: Spin Arena verifies bonus points and category question answers', () => {
+    const bonus = arenaGames.validateLevel2({ category: 'Bonus Points' });
+    assert.strictEqual(bonus.correct, true);
+    assert.strictEqual(bonus.score, 100);
+
+    const questionCorrect = arenaGames.validateLevel2({ category: 'Electrical Engineering', selectedOption: 'A' });
+    assert.strictEqual(questionCorrect.correct, true);
+    assert.strictEqual(questionCorrect.score, 100);
+    assert.strictEqual(questionCorrect.message, 'Spin Arena Completed!');
+  });
+
+  runTest('Level 3: Build Zone verifies bridge placement & structural question', () => {
+    const valid = arenaGames.validateLevel3({
+      placedComponents: { foundation: true, deck: true, arch: true },
+      selectedOption: 'A'
+    });
+    assert.strictEqual(valid.correct, true);
+    assert.strictEqual(valid.score, 100);
+    assert.strictEqual(valid.message, 'Junior Engineer Unlocked!');
+
+    const incompleteBridge = arenaGames.validateLevel3({
+      placedComponents: { foundation: true },
+      selectedOption: 'A'
+    });
+    assert.strictEqual(incompleteBridge.correct, false);
+    assert.strictEqual(incompleteBridge.score, 0);
+  });
+
+  runTest('Level 4: Escape Room verifies 3 challenges (logic, component, keypad pin 10)', () => {
+    const valid = arenaGames.validateLevel4({
+      c1Option: 'C',
+      c2Component: 'motor',
+      c3Pin: '10'
+    });
+    assert.strictEqual(valid.correct, true);
+    assert.strictEqual(valid.score, 100);
+    assert.strictEqual(valid.badge, 'ENGINEERING ESCAPE MASTER');
+
+    const wrongPin = arenaGames.validateLevel4({
+      c1Option: 'C',
+      c2Component: 'motor',
+      c3Pin: '99'
+    });
+    assert.strictEqual(wrongPin.correct, false);
+  });
+
+  runTest('Unified Arena Total evaluates 400 marks & awards ENGINEERING ARENA CHAMPION distinction', () => {
+    const arenaSummary = arenaGames.calculateArenaTotal({
+      circuitMaster: { completed: true, score: 100 },
+      spinArena: { completed: true, score: 100 },
+      buildZone: { completed: true, score: 100 },
+      escapeRoom: { completed: true, score: 100 }
+    });
+
+    assert.strictEqual(arenaSummary.score, 400);
+    assert.strictEqual(arenaSummary.totalScore, 400);
+    assert.strictEqual(arenaSummary.scoreMax, 400);
+    assert.strictEqual(arenaSummary.percentage, 100);
+    assert.strictEqual(arenaSummary.completedGamesCount, 4);
+    assert.strictEqual(arenaSummary.isChampion, true);
+    assert.ok(arenaSummary.performanceBadge.includes('CHAMPION'));
+  });
+
+  // 10. Database Arena State Persistence & Certificate
+  await runAsyncTest('Participant can complete Arena in DB and generate 400-mark Champion Certificate', async () => {
+    const p = db.createParticipant({
+      fullName: 'Siddharth Varma',
+      email: 'siddharth.varma@gmail.com',
+      branch: 'Cyber Security',
+      collegeName: 'Dr. M.G.R. Educational and Research Institute'
+    });
+
+    const attempt = db.createQuizAttempt(p.participantId);
+    assert.ok(attempt.attemptId);
+
+    // Save individual level progress
+    db.updateAttemptLevel(attempt.attemptId, 'circuitMaster', { completed: true, score: 100 });
+    db.updateAttemptLevel(attempt.attemptId, 'spinArena', { completed: true, score: 100 });
+    db.updateAttemptLevel(attempt.attemptId, 'buildZone', { completed: true, score: 100 });
+    db.updateAttemptLevel(attempt.attemptId, 'escapeRoom', { completed: true, score: 100 });
+
+    // Finalize arena
+    const updatedAttempt = db.findAttemptById(attempt.attemptId);
+    const arenaSummary = arenaGames.calculateArenaTotal(updatedAttempt.arenaLevels);
+    const finalized = db.finalizeArenaAttempt(attempt.attemptId, arenaSummary);
+
+    assert.strictEqual(finalized.status, 'Completed');
+    assert.strictEqual(finalized.score, 400);
+    assert.strictEqual(finalized.isChampion, true);
+
+    // Generate Champion Certificate
+    const certResult = await generateCertificatePdf({
+      certificateId: 'TYEB-2026-CHAMP01',
+      fullName: p.fullName,
+      branch: p.branch,
+      score: finalized.score,
+      scoreMax: 400,
+      percentage: finalized.percentage,
+      isChampion: true,
+      completionDate: new Date()
+    });
+
+    assert.ok(fs.existsSync(certResult.filePath));
+    assert.ok(certResult.pdfBuffer.length > 50000);
+
+    // Verify Admin row formatting
+    const adminRows = db.getAdminParticipantsList({ search: 'Siddharth' });
+    assert.ok(adminRows.length >= 1);
+    const row = adminRows[0];
+    assert.strictEqual(row.score, 400);
+    assert.strictEqual(row.isChampion, true);
+    assert.strictEqual(row.circuitScore, 100);
+    assert.strictEqual(row.spinScore, 100);
+    assert.strictEqual(row.buildScore, 100);
+    assert.strictEqual(row.escapeScore, 100);
   });
 
   console.log('\n-------------------------------------------------------');

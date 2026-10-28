@@ -12,6 +12,11 @@ const crypto = require('crypto');
 
 const db = require('./src/database');
 const { getSanitizedQuestions, evaluateQuiz } = require('./src/questions');
+const {
+  getSanitizedArenaConfig,
+  evaluateLevel,
+  calculateArenaTotal
+} = require('./src/arenaGames');
 const { generateCertificatePdf } = require('./src/certificateGenerator');
 const { sendCertificateEmail, getEmailProviderConfig } = require('./src/emailService');
 
@@ -150,7 +155,7 @@ app.post('/api/register', (req, res) => {
   }
 });
 
-// 2. Fetch Quiz Questions (Sanitized: NO correct answers exposed!)
+// 2. Fetch Quiz Questions (Legacy)
 app.get('/api/quiz/questions', (req, res) => {
   try {
     const sanitized = getSanitizedQuestions();
@@ -165,10 +170,56 @@ app.get('/api/quiz/questions', (req, res) => {
   }
 });
 
-// 3. Submit Quiz & Server-Side Evaluation
+// 2b. ENGINEERING ARENA - Fetch Game Configuration & Content (Client Safe)
+app.get('/api/arena/config', (req, res) => {
+  try {
+    const config = getSanitizedArenaConfig();
+    return res.json({
+      success: true,
+      config
+    });
+  } catch (err) {
+    console.error('[API /arena/config error]:', err);
+    return res.status(500).json({ error: 'Unable to retrieve arena configuration.' });
+  }
+});
+
+// 2c. ENGINEERING ARENA - Real-Time Level Submission & Validation
+app.post('/api/arena/submit-level', (req, res) => {
+  try {
+    const { attemptId, participantId, levelKey, data } = req.body;
+    if (!levelKey) {
+      return res.status(400).json({ error: 'Level key is required.' });
+    }
+
+    const levelResult = evaluateLevel(levelKey, data || {});
+
+    let updatedAttempt = null;
+    if (attemptId) {
+      updatedAttempt = db.updateAttemptLevel(attemptId, levelKey, levelResult);
+    }
+
+    return res.json({
+      success: true,
+      levelResult,
+      attempt: updatedAttempt ? {
+        attemptId: updatedAttempt.attemptId,
+        arenaScore: updatedAttempt.arenaScore,
+        completedGamesCount: updatedAttempt.completedGamesCount,
+        isChampion: updatedAttempt.isChampion,
+        arenaLevels: updatedAttempt.arenaLevels
+      } : null
+    });
+  } catch (err) {
+    console.error('[API /arena/submit-level error]:', err);
+    return res.status(500).json({ error: 'Failed to process level submission.' });
+  }
+});
+
+// 3. Submit Quiz / Finalize Engineering Arena
 app.post('/api/quiz/submit', async (req, res) => {
   try {
-    const { participantId, attemptId, answers, participant: pPayload } = req.body;
+    const { participantId, attemptId, answers, levels, isArena, participant: pPayload } = req.body;
 
     let participant = participantId ? db.findParticipantById(participantId) : null;
 
@@ -221,16 +272,45 @@ app.post('/api/quiz/submit', async (req, res) => {
       });
     }
 
-    // Server-side scoring
-    const evaluation = evaluateQuiz(answers || {});
+    const isArenaSubmission = Boolean(isArena || levels || attempt.arenaLevels);
+    let evaluation;
+    let completedAttempt;
 
-    // Finalize attempt in database
-    const completedAttempt = db.completeQuizAttempt(attemptId, evaluation, answers || {});
+    if (isArenaSubmission) {
+      // Engineering Arena 4-Level Evaluation
+      const arenaLevels = levels || attempt.arenaLevels || {};
+      const overall = calculateArenaTotal(arenaLevels);
+
+      evaluation = {
+        score: overall.totalScore,
+        maxScore: 400,
+        percentage: overall.percentage,
+        correctAnswers: overall.completedCount,
+        totalQuestions: 4,
+        incorrectAnswers: 4 - overall.completedCount,
+        performanceMessage: overall.performanceMessage,
+        performanceBadge: overall.isChampion ? "ARENA CHAMPION 🏆" : (overall.totalScore >= 300 ? "Master Engineer ⚡" : "Junior Engineer 🛠️"),
+        isChampion: overall.isChampion,
+        completedCount: overall.completedCount,
+        levels: arenaLevels
+      };
+
+      completedAttempt = db.finalizeArenaAttempt(attempt.attemptId, {
+        levels: arenaLevels,
+        totalScore: overall.totalScore,
+        percentage: overall.percentage,
+        completedCount: overall.completedCount,
+        isChampion: overall.isChampion
+      });
+    } else {
+      // Legacy 10-MCQ evaluation
+      evaluation = evaluateQuiz(answers || {});
+      completedAttempt = db.completeQuizAttempt(attemptId, evaluation, answers || {});
+    }
 
     // Generate Certificate PDF
     let cert = db.findCertificateByParticipant(participantId);
     if (!cert) {
-      // Create Certificate record in database first
       cert = db.createCertificate({
         participantId: participant.participantId,
         attemptId: completedAttempt.attemptId,
@@ -243,6 +323,8 @@ app.post('/api/quiz/submit', async (req, res) => {
       fullName: participant.fullName,
       branch: participant.branch,
       score: evaluation.score,
+      scoreMax: isArenaSubmission ? 400 : 10,
+      isChampion: Boolean(evaluation.isChampion),
       percentage: evaluation.percentage,
       completionDate: completedAttempt.completedAt
     });
@@ -269,13 +351,17 @@ app.post('/api/quiz/submit', async (req, res) => {
       },
       evaluation: {
         score: evaluation.score,
+        maxScore: evaluation.maxScore || 10,
         totalQuestions: evaluation.totalQuestions,
         percentage: evaluation.percentage,
         correctAnswers: evaluation.correctAnswers,
         incorrectAnswers: evaluation.incorrectAnswers,
         performanceMessage: evaluation.performanceMessage,
         performanceBadge: evaluation.performanceBadge,
-        breakdown: evaluation.breakdown
+        isChampion: Boolean(evaluation.isChampion),
+        completedCount: evaluation.completedCount || evaluation.correctAnswers,
+        levels: evaluation.levels || null,
+        breakdown: evaluation.breakdown || null
       },
       certificate: {
         certificateId: cert.certificateId,
@@ -564,8 +650,14 @@ app.get('/api/admin/export-csv', requireAdmin, (req, res) => {
       'IEI Member',
       'IEI Membership ID',
       'Registration Timestamp',
-      'Score (out of 10)',
+      'Total Score (out of 400)',
       'Percentage (%)',
+      'Circuit Master (100)',
+      'Spin Arena (100)',
+      'Build Zone (100)',
+      'Escape Room (100)',
+      'Completed Games (4)',
+      'Arena Champion',
       'Quiz Status',
       'Certificate Status',
       'Certificate ID',
@@ -590,6 +682,12 @@ app.get('/api/admin/export-csv', requireAdmin, (req, res) => {
       escapeCsv(p.registrationTimestamp),
       escapeCsv(p.score),
       escapeCsv(p.percentage),
+      escapeCsv(p.circuitScore ?? (p.score ?? 0)),
+      escapeCsv(p.spinScore ?? 0),
+      escapeCsv(p.buildScore ?? 0),
+      escapeCsv(p.escapeScore ?? 0),
+      escapeCsv(p.completedGamesCount ?? 0),
+      escapeCsv(p.isChampion ? 'Yes 🏆' : 'No'),
       escapeCsv(p.quizStatus),
       escapeCsv(p.certificateStatus),
       escapeCsv(p.certificateId || 'N/A'),

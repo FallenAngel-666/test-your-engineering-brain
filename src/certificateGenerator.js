@@ -64,6 +64,8 @@ async function generateCertificatePdf({
   fullName,
   branch,
   score,
+  scoreMax = null,
+  isChampion = false,
   percentage,
   completionDate
 }) {
@@ -169,14 +171,19 @@ async function generateCertificatePdf({
     color: darkSlate
   });
 
-  // Score Badge
-  const scoreText = `Score: ${score} / 10 (${percentage}%)`;
+  // Score Badge (Supports both 400-point arena scale & legacy 10-point scale)
+  const maxScore = scoreMax || (score > 10 ? 400 : 10);
+  const scoreText = isChampion
+    ? `* ARENA CHAMPION * Score: ${score} / ${maxScore} (${percentage}%)`
+    : `Arena Score: ${score} / ${maxScore} (${percentage}%)`;
+
+  let scoreFontSize = isChampion ? 9.5 : 10.5;
   page.drawText(scoreText, {
     x: 410,
     y: 116,
-    size: 10.5,
+    size: scoreFontSize,
     font: fontHelveticaBold,
-    color: score >= 7 ? rgb(0.10, 0.52, 0.42) : rgb(0.18, 0.35, 0.55)
+    color: percentage >= 70 ? rgb(0.10, 0.52, 0.42) : rgb(0.18, 0.35, 0.55)
   });
 
   // Completion Date

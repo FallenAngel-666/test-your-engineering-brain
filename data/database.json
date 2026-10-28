@@ -1,10 +1,6 @@
 {
   "participants": [],
-  "quizAttempts": [],
+  "attempts": [],
   "certificates": [],
-  "emailLogs": [],
-  "systemMeta": {
-    "initializedAt": "2026-10-27T00:00:00.000Z",
-    "version": "1.0.0"
-  }
+  "emailLogs": []
 }

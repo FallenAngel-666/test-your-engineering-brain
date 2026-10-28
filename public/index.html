@@ -170,68 +170,719 @@
     </section>
 
     <!-- ========================================================
-         VIEW 2: INTERACTIVE QUIZ GAME
+         VIEW 2: ENGINEERING ARENA (INTERACTIVE 4-GAME HUB)
          ======================================================== -->
-    <section id="viewQuiz" class="view-section">
-      <div class="quiz-container">
-        <!-- HUD / Status Header -->
-        <div class="quiz-hud">
-          <div class="hud-left">
-            <span class="hud-badge" id="hudQuestionCounter">Question 1 of 10</span>
-            <span class="category-pill" id="hudCategory">General Engineering</span>
-            <span class="difficulty-pill" id="hudDifficulty">Medium</span>
+    <section id="viewArena" class="view-section">
+      <div class="arena-container">
+        <!-- Arena Hero Banner -->
+        <div class="glass-card arena-hero-banner">
+          <div class="arena-hero-content">
+            <div class="badge-pill arena-badge">ENGINEERING ARENA 🎮</div>
+            <h1 class="arena-title">ENGINEERING ARENA</h1>
+            <p class="arena-tagline"><em>Think. Build. Solve. Innovate.</em></p>
+            <p class="arena-description">
+              Welcome to the ultimate interactive engineering proving ground. Complete all 4 engineering challenges to test your core technical intuition, accumulate up to <strong>400 points</strong>, and earn the prestigious <strong>ENGINEERING ARENA CHAMPION</strong> distinction!
+            </p>
           </div>
-          <div class="hud-right">
-            <div class="hud-timer">
-              <span class="timer-icon">⏱️</span>
-              <span id="quizTimerText">00:00</span>
+
+          <!-- Arena Live Stats HUD -->
+          <div class="arena-hud-card">
+            <div class="hud-stat-item">
+              <span class="hud-stat-label">Participant</span>
+              <span class="hud-stat-value" id="arenaParticipantName">Student</span>
             </div>
-            <div class="participant-badge-pill" id="hudParticipantName">Student</div>
+            <div class="hud-stat-item">
+              <span class="hud-stat-label">Total Arena Score</span>
+              <span class="hud-stat-value score-highlight" id="arenaTotalScore">0 / 400</span>
+            </div>
+            <div class="hud-stat-item">
+              <span class="hud-stat-label">Challenges Completed</span>
+              <span class="hud-stat-value" id="arenaCompletedCount">0 / 4</span>
+            </div>
+            <div class="hud-progress-wrap">
+              <div class="hud-progress-bar" id="arenaProgressBar" style="width: 0%;"></div>
+            </div>
+            <div id="arenaChampionBadgeHub" class="arena-champion-badge" style="display: none;">
+              🏆 ENGINEERING ARENA CHAMPION
+            </div>
           </div>
         </div>
 
-        <!-- Animated Progress Bar -->
-        <div class="quiz-progress-track">
-          <div class="quiz-progress-fill" id="quizProgressFill" style="width: 10%;"></div>
+        <!-- Four Game Cards Grid -->
+        <div class="arena-cards-grid">
+          <!-- CARD 1: CIRCUIT MASTER -->
+          <div class="game-card game-card-circuit" id="cardCircuit">
+            <div class="game-card-header">
+              <span class="level-indicator">LEVEL 1</span>
+              <span class="theme-pill theme-circuit">Electrical & Physics</span>
+            </div>
+            <div class="game-card-icon-wrap">
+              <div class="game-card-icon circuit-glow">⚡</div>
+            </div>
+            <h3 class="game-card-title">CIRCUIT MASTER</h3>
+            <p class="game-card-desc">
+              Complete an electrical circuit with battery, switch, and connecting wires. Light up the bulb and solve circuit fundamentals.
+            </p>
+            <div class="game-card-footer">
+              <div class="game-status-row">
+                <span class="status-dot" id="dotCircuit"></span>
+                <span class="status-text" id="statusTextCircuit">Not Started</span>
+                <span class="game-score-badge" id="scoreBadgeCircuit">0 / 100</span>
+              </div>
+              <button class="btn btn-primary btn-block btn-game-play" id="btnPlayCircuit">
+                PLAY CIRCUIT MASTER ⚡
+              </button>
+            </div>
+          </div>
+
+          <!-- CARD 2: SPIN ARENA -->
+          <div class="game-card game-card-spin" id="cardSpin">
+            <div class="game-card-header">
+              <span class="level-indicator">LEVEL 2</span>
+              <span class="theme-pill theme-spin">Random Challenge</span>
+            </div>
+            <div class="game-card-icon-wrap">
+              <div class="game-card-icon spin-glow">🎡</div>
+            </div>
+            <h3 class="game-card-title">SPIN ARENA</h3>
+            <p class="game-card-desc">
+              Spin the high-tech wheel to receive an engineering challenge across multiple disciplines or unlock instant bonus points.
+            </p>
+            <div class="game-card-footer">
+              <div class="game-status-row">
+                <span class="status-dot" id="dotSpin"></span>
+                <span class="status-text" id="statusTextSpin">Not Started</span>
+                <span class="game-score-badge" id="scoreBadgeSpin">0 / 100</span>
+              </div>
+              <button class="btn btn-primary btn-block btn-game-play" id="btnPlaySpin">
+                SPIN THE WHEEL 🎡
+              </button>
+            </div>
+          </div>
+
+          <!-- CARD 3: BUILD ZONE -->
+          <div class="game-card game-card-build" id="cardBuild">
+            <div class="game-card-header">
+              <span class="level-indicator">LEVEL 3</span>
+              <span class="theme-pill theme-build">Structural & Civil</span>
+            </div>
+            <div class="game-card-icon-wrap">
+              <div class="game-card-icon build-glow">🌉</div>
+            </div>
+            <h3 class="game-card-title">BUILD ZONE</h3>
+            <p class="game-card-desc">
+              Construct a stable bridge across a gap using modular structural components, verify with vehicle traffic, and solve structural mechanics.
+            </p>
+            <div class="game-card-footer">
+              <div class="game-status-row">
+                <span class="status-dot" id="dotBuild"></span>
+                <span class="status-text" id="statusTextBuild">Not Started</span>
+                <span class="game-score-badge" id="scoreBadgeBuild">0 / 100</span>
+              </div>
+              <button class="btn btn-primary btn-block btn-game-play" id="btnPlayBuild">
+                ENTER BUILD ZONE 🌉
+              </button>
+            </div>
+          </div>
+
+          <!-- CARD 4: ENGINEERING ESCAPE ROOM -->
+          <div class="game-card game-card-escape" id="cardEscape">
+            <div class="game-card-header">
+              <span class="level-indicator">LEVEL 4</span>
+              <span class="theme-pill theme-escape">Futuristic Lab</span>
+            </div>
+            <div class="game-card-icon-wrap">
+              <div class="game-card-icon escape-glow">🔐</div>
+            </div>
+            <h3 class="game-card-title">ENGINEERING ESCAPE ROOM</h3>
+            <p class="game-card-desc">
+              Solve three sequential challenges: Logic Lock sequence, Component Identification, and Keypad Digital Override to unlock the laboratory.
+            </p>
+            <div class="game-card-footer">
+              <div class="game-status-row">
+                <span class="status-dot" id="dotEscape"></span>
+                <span class="status-text" id="statusTextEscape">Not Started</span>
+                <span class="game-score-badge" id="scoreBadgeEscape">0 / 100</span>
+              </div>
+              <button class="btn btn-primary btn-block btn-game-play" id="btnPlayEscape">
+                ENTER ESCAPE ROOM 🔐
+              </button>
+            </div>
+          </div>
         </div>
 
-        <!-- Question Card -->
-        <div class="glass-card question-card" id="questionCard">
-          <div class="question-header">
-            <span class="q-number" id="qNumberBadge">Q1</span>
-            <h2 class="q-title" id="qText">Loading question...</h2>
+        <!-- Arena Global Action Bottom Bar -->
+        <div class="glass-card arena-submit-bar">
+          <div class="submit-bar-info">
+            <h4>Ready to submit your Arena results?</h4>
+            <p id="arenaSubmitHint">Play challenges to accumulate points. Complete all 4 levels for full 400 marks and the Champion credential!</p>
           </div>
-
-          <!-- Options Grid (A, B, C, D) -->
-          <div class="options-grid" id="optionsGrid">
-            <!-- Rendered dynamically -->
-          </div>
-
-          <!-- Navigation & Jump Controls -->
-          <div class="quiz-controls">
-            <button id="prevQuestionBtn" class="btn btn-secondary" disabled>
-              ← PREVIOUS
+          <div class="submit-bar-actions">
+            <button class="btn btn-gold btn-lg" id="btnFinishArena">
+              <span>FINISH & CLAIM E-CERTIFICATE 📜</span>
             </button>
+          </div>
+        </div>
+      </div>
+    </section>
 
-            <!-- 10 Question Navigator Pills -->
-            <div class="question-pills-row" id="questionPillsRow">
-              <!-- Rendered dynamically 1-10 -->
+    <!-- ========================================================
+         VIEW 2A: LEVEL 1 - CIRCUIT MASTER
+         ======================================================== -->
+    <section id="viewLevel1" class="view-section">
+      <div class="game-level-container level-circuit-theme">
+        <!-- Top Control Bar -->
+        <div class="level-topbar">
+          <button class="btn btn-outline-secondary btn-sm" id="btnBackToArenaFromL1">
+            ← BACK TO ARENA
+          </button>
+          <div class="level-hud-center">
+            <span class="level-badge badge-circuit">LEVEL 1: CIRCUIT MASTER</span>
+            <span class="level-score-display" id="hudL1Score">Score: 0 / 100</span>
+          </div>
+          <div class="level-hud-actions">
+            <button class="btn btn-outline-info btn-sm" id="btnHintL1">
+              💡 Hint
+            </button>
+          </div>
+        </div>
+
+        <!-- Circuit Game Board Card -->
+        <div class="glass-card circuit-board-card">
+          <div class="board-header">
+            <h2>Assemble the Electrical Circuit</h2>
+            <p>Connect the missing conductor wire across the open terminal gap to complete the circuit and power the filament bulb.</p>
+          </div>
+
+          <!-- Interactive Circuit Canvas / Diagram -->
+          <div class="circuit-workstation" id="circuitWorkstation">
+            <div class="circuit-canvas-area" id="circuitCanvasArea">
+              <!-- Battery Component -->
+              <div class="circuit-node node-battery" id="nodeBattery">
+                <div class="node-label">9V DC BATTERY</div>
+                <div class="node-icon">🔋</div>
+                <div class="terminal terminal-pos" title="Positive Terminal (+)">+</div>
+                <div class="terminal terminal-neg" title="Negative Terminal (-)">-</div>
+              </div>
+
+              <!-- Switch Component -->
+              <div class="circuit-node node-switch" id="nodeSwitch">
+                <div class="node-label">KNIFE SWITCH</div>
+                <div class="switch-visual" id="switchVisual">
+                  <div class="switch-arm closed" id="switchArm"></div>
+                </div>
+                <div class="switch-status" id="switchStatusText">CLOSED</div>
+              </div>
+
+              <!-- Light Bulb Component -->
+              <div class="circuit-node node-bulb" id="nodeBulb">
+                <div class="node-label">INCANDESCENT BULB</div>
+                <div class="bulb-visual" id="bulbVisual">
+                  <div class="bulb-glass">💡</div>
+                  <div class="bulb-glow-ring" id="bulbGlowRing"></div>
+                </div>
+                <div class="bulb-status" id="bulbStatusText">OFF</div>
+              </div>
+
+              <!-- Fixed Wires (SVG traces) -->
+              <svg class="circuit-wire-svg" viewBox="0 0 700 320">
+                <!-- Battery to Switch -->
+                <path d="M 120 160 L 120 70 L 300 70" class="wire-trace active-wire" />
+                <!-- Switch to Bulb -->
+                <path d="M 400 70 L 580 70 L 580 150" class="wire-trace active-wire" />
+                <!-- Bulb return to gap terminal 1 -->
+                <path d="M 580 230 L 580 270 L 460 270" class="wire-trace active-wire" />
+                <!-- Battery return to gap terminal 2 -->
+                <path d="M 120 230 L 120 270 L 240 270" class="wire-trace active-wire" />
+              </svg>
+
+              <!-- Connection Gap / Drop Zone -->
+              <div class="circuit-gap-zone" id="circuitGapDropZone">
+                <div class="gap-terminal gap-term-left">⚡ Terminal A</div>
+                <div class="gap-slot" id="gapSlot">
+                  <span class="gap-placeholder-text">⚡ DRAG OR CLICK WIRE TO CONNECT HERE ⚡</span>
+                </div>
+                <div class="gap-terminal gap-term-right">⚡ Terminal B</div>
+              </div>
             </div>
 
-            <button id="nextQuestionBtn" class="btn btn-primary">
-              NEXT →
+            <!-- Wire Toolbox / Selection Area -->
+            <div class="circuit-toolbox">
+              <h4>Toolbox Components</h4>
+              <p>Drag the conductive wire into the terminal gap or click "Connect Wire":</p>
+              <div class="toolbox-items-row">
+                <div class="toolbox-item draggable-wire" id="wireToolboxItem" draggable="true">
+                  <span class="item-icon">〰️</span>
+                  <span class="item-name">Conductive Copper Wire (Cyan)</span>
+                  <span class="item-hint">Drag or Click</span>
+                </div>
+                <button class="btn btn-outline-primary btn-sm" id="btnQuickConnectWire">
+                  ⚡ Auto-Snap Wire
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" id="btnResetCircuit">
+                  🔄 Reset Circuit
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Question Follow-up Section (Revealed when circuit is closed) -->
+          <div class="circuit-question-card" id="circuitQuestionCard" style="display: none;">
+            <div class="question-header">
+              <span class="q-badge">CIRCUIT THEORY CHALLENGE</span>
+              <h3 id="l1QuestionText">What is required for electric current to flow continuously?</h3>
+            </div>
+            <div class="options-grid" id="l1OptionsGrid">
+              <!-- Dynamically populated -->
+            </div>
+            <div class="level-action-row">
+              <button class="btn btn-gold btn-lg" id="btnSubmitL1" disabled>
+                VERIFY & UNLOCK LEVEL 1 ⚡
+              </button>
+            </div>
+          </div>
+
+          <!-- Level Completed Banner -->
+          <div class="level-success-card" id="l1SuccessCard" style="display: none;">
+            <div class="success-icon">⚡</div>
+            <h3>Circuit Master Unlocked!</h3>
+            <p id="l1SuccessMsg">Outstanding work! Circuit assembled and verified with 100% electrical continuity.</p>
+            <div class="success-score-tag" id="l1AwardedScore">+100 Points Awarded</div>
+            <button class="btn btn-gold" id="btnL1ToArena">
+              RETURN TO ARENA 🏆
             </button>
-            <button id="submitQuizBtn" class="btn btn-gold" style="display:none;">
-              SUBMIT QUIZ 🏁
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         VIEW 2B: LEVEL 2 - SPIN ARENA
+         ======================================================== -->
+    <section id="viewLevel2" class="view-section">
+      <div class="game-level-container level-spin-theme">
+        <!-- Top Control Bar -->
+        <div class="level-topbar">
+          <button class="btn btn-outline-secondary btn-sm" id="btnBackToArenaFromL2">
+            ← BACK TO ARENA
+          </button>
+          <div class="level-hud-center">
+            <span class="level-badge badge-spin">LEVEL 2: SPIN ARENA</span>
+            <span class="level-score-display" id="hudL2Score">Score: 0 / 100</span>
+          </div>
+          <div class="level-hud-actions">
+            <span class="spin-counter-pill" id="spinAttemptsCount">1 Spin Available</span>
+          </div>
+        </div>
+
+        <!-- Spin Wheel Card -->
+        <div class="glass-card spin-wheel-card">
+          <div class="board-header">
+            <h2>Engineering Wheel of Fortune</h2>
+            <p>Click "SPIN THE WHEEL" to receive a high-impact engineering discipline challenge or land on Bonus Points!</p>
+          </div>
+
+          <!-- Wheel Stage -->
+          <div class="wheel-stage-container">
+            <!-- Indicator Needle Pointer -->
+            <div class="wheel-pointer-wrapper">
+              <div class="wheel-pointer">▼</div>
+            </div>
+
+            <!-- Canvas Element -->
+            <div class="wheel-canvas-wrapper">
+              <canvas id="spinWheelCanvas" width="460" height="460"></canvas>
+            </div>
+
+            <!-- Spin Trigger Control -->
+            <div class="wheel-controls">
+              <button class="btn btn-gold btn-lg btn-pulse" id="btnSpinWheel">
+                <span>🎡 SPIN THE WHEEL! 🎡</span>
+              </button>
+              <div class="spin-status-text" id="spinStatusText">Ready to spin! Click the button above.</div>
+            </div>
+          </div>
+
+          <!-- Question / Bonus Card (Revealed after spin lands) -->
+          <div class="spin-challenge-card" id="spinChallengeCard" style="display: none;">
+            <!-- Category Banner -->
+            <div class="spin-category-banner" id="spinCategoryBanner">
+              <span class="cat-icon" id="spinCatIcon">⚡</span>
+              <span class="cat-name" id="spinCatName">Electrical Engineering</span>
+            </div>
+
+            <!-- Bonus Points Special Display -->
+            <div class="bonus-round-card" id="spinBonusCard" style="display: none;">
+              <div class="bonus-icon">🌟</div>
+              <h3>JACKPOT! BONUS POINTS UNLOCKED!</h3>
+              <p>You landed on the golden Bonus Points segment! 100 Instant engineering points added to your score.</p>
+              <button class="btn btn-gold btn-lg" id="btnClaimBonusPoints">
+                CLAIM BONUS 100 POINTS 🌟
+              </button>
+            </div>
+
+            <!-- Normal Question Display -->
+            <div class="spin-question-section" id="spinQuestionSection">
+              <h3 class="q-title" id="l2QuestionText">Loading question...</h3>
+              <div class="options-grid" id="l2OptionsGrid">
+                <!-- Dynamically populated -->
+              </div>
+              <div class="level-action-row">
+                <button class="btn btn-gold btn-lg" id="btnSubmitL2" disabled>
+                  SUBMIT ANSWER 🏁
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Level Completed Banner -->
+          <div class="level-success-card" id="l2SuccessCard" style="display: none;">
+            <div class="success-icon">🎡</div>
+            <h3>Spin Arena Completed!</h3>
+            <p id="l2SuccessMsg">Magnificent! Your engineering knowledge across specialized disciplines has been validated.</p>
+            <div class="success-score-tag" id="l2AwardedScore">+100 Points Awarded</div>
+            <button class="btn btn-gold" id="btnL2ToArena">
+              RETURN TO ARENA 🏆
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         VIEW 2C: LEVEL 3 - BUILD ZONE
+         ======================================================== -->
+    <section id="viewLevel3" class="view-section">
+      <div class="game-level-container level-build-theme">
+        <!-- Top Control Bar -->
+        <div class="level-topbar">
+          <button class="btn btn-outline-secondary btn-sm" id="btnBackToArenaFromL3">
+            ← BACK TO ARENA
+          </button>
+          <div class="level-hud-center">
+            <span class="level-badge badge-build">LEVEL 3: BUILD ZONE</span>
+            <span class="level-score-display" id="hudL3Score">Score: 0 / 100</span>
+          </div>
+          <div class="level-hud-actions">
+            <button class="btn btn-outline-info btn-sm" id="btnHintL3">
+              💡 Hint
             </button>
           </div>
         </div>
 
-        <!-- Hotkey hints -->
-        <div class="hotkey-footer">
-          <span class="key-hint"><kbd>1</kbd>-<kbd>4</kbd> or <kbd>A</kbd>-<kbd>D</kbd> Select Option</span>
-          <span class="key-hint"><kbd>←</kbd> Previous</span>
-          <span class="key-hint"><kbd>→</kbd> Next</span>
+        <!-- Bridge Construction Site Card -->
+        <div class="glass-card build-zone-card">
+          <div class="board-header">
+            <h2>Bridge Engineering Challenge</h2>
+            <p>Assemble the structural bridge across the chasm by placing the foundation piers, roadway deck, and suspension arch into their correct slots.</p>
+          </div>
+
+          <!-- Construction Scenery Viewport -->
+          <div class="bridge-construction-viewport">
+            <div class="chasm-background">
+              <div class="water-surface"></div>
+              <div class="cliff cliff-left">
+                <div class="cliff-label">WEST SECTOR</div>
+              </div>
+              <div class="cliff cliff-right">
+                <div class="cliff-label">EAST SECTOR</div>
+              </div>
+
+              <!-- Bridge Snap Target Slots -->
+              <div class="bridge-assembly-area">
+                <!-- Slot 1: Pier Foundation (Bottom) -->
+                <div class="bridge-slot slot-foundation" id="slotFoundation" data-slot="foundation">
+                  <span class="slot-text">1. DROP FOUNDATION TRUSS PIER HERE</span>
+                  <div class="slot-placed-item" id="placedFoundation"></div>
+                </div>
+
+                <!-- Slot 2: Roadway Deck (Middle) -->
+                <div class="bridge-slot slot-deck" id="slotDeck" data-slot="deck">
+                  <span class="slot-text">2. DROP ROADWAY DECK SPAN HERE</span>
+                  <div class="slot-placed-item" id="placedDeck"></div>
+                </div>
+
+                <!-- Slot 3: Arch Superstructure (Top) -->
+                <div class="bridge-slot slot-arch" id="slotArch" data-slot="arch">
+                  <span class="slot-text">3. DROP SUSPENSION ARCH BEAM HERE</span>
+                  <div class="slot-placed-item" id="placedArch"></div>
+                </div>
+
+                <!-- Vehicle Animation Layer -->
+                <div class="vehicle-track" id="vehicleTrack">
+                  <div class="vehicle-car" id="vehicleCar">
+                    <span class="vehicle-icon">🚚</span>
+                    <span class="vehicle-trail"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Structural Toolbox Drawer -->
+            <div class="bridge-toolbox">
+              <div class="toolbox-title-row">
+                <h4>Modular Bridge Structural Components</h4>
+                <div class="toolbox-progress" id="bridgePlacedCounter">Placed: 0 / 3</div>
+              </div>
+              <p>Drag each component into its corresponding target slot, or click the component to auto-place:</p>
+              <div class="bridge-components-grid">
+                <!-- Component 1: Foundation Pier -->
+                <div class="bridge-component-card" id="compFoundation" draggable="true" data-type="foundation">
+                  <div class="comp-icon">🏗️</div>
+                  <div class="comp-info">
+                    <strong>Foundation Truss Pier</strong>
+                    <small>Heavy concrete base absorbs ground load</small>
+                  </div>
+                  <button class="btn btn-outline-primary btn-xs btn-place-comp">Place In Slot 1</button>
+                </div>
+
+                <!-- Component 2: Roadway Deck -->
+                <div class="bridge-component-card" id="compDeck" draggable="true" data-type="deck">
+                  <div class="comp-icon">🛣️</div>
+                  <div class="comp-info">
+                    <strong>Roadway Deck Span</strong>
+                    <small>Reinforced asphalt driving corridor</small>
+                  </div>
+                  <button class="btn btn-outline-primary btn-xs btn-place-comp">Place In Slot 2</button>
+                </div>
+
+                <!-- Component 3: Suspension Arch -->
+                <div class="bridge-component-card" id="compArch" draggable="true" data-type="arch">
+                  <div class="comp-icon">🌈</div>
+                  <div class="comp-info">
+                    <strong>Suspension Arch Beam</strong>
+                    <small>High-tensile steel arch distributes tension</small>
+                  </div>
+                  <button class="btn btn-outline-primary btn-xs btn-place-comp">Place In Slot 3</button>
+                </div>
+              </div>
+
+              <div class="bridge-tools-actions">
+                <button class="btn btn-outline-secondary btn-sm" id="btnResetBridge">
+                  🔄 Reset Construction
+                </button>
+                <button class="btn btn-outline-teal btn-sm" id="btnAutoBuildBridge">
+                  ⚡ Auto-Assemble Structure
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Question Follow-up Section (Revealed when bridge is built and vehicle tests passage) -->
+          <div class="circuit-question-card" id="buildQuestionCard" style="display: none;">
+            <div class="question-header">
+              <span class="q-badge">STRUCTURAL MECHANICS CHALLENGE</span>
+              <h3 id="l3QuestionText">Why are support beams used in bridges?</h3>
+            </div>
+            <div class="options-grid" id="l3OptionsGrid">
+              <!-- Dynamically populated -->
+            </div>
+            <div class="level-action-row">
+              <button class="btn btn-gold btn-lg" id="btnSubmitL3" disabled>
+                VERIFY & UNLOCK LEVEL 3 🌉
+              </button>
+            </div>
+          </div>
+
+          <!-- Level Completed Banner -->
+          <div class="level-success-card" id="l3SuccessCard" style="display: none;">
+            <div class="success-icon">🌉</div>
+            <h3>Junior Engineer Unlocked!</h3>
+            <p id="l3SuccessMsg">Brilliant bridge design! Traffic load test passed with 100% structural stability.</p>
+            <div class="success-score-tag" id="l3AwardedScore">+100 Points Awarded</div>
+            <button class="btn btn-gold" id="btnL3ToArena">
+              RETURN TO ARENA 🏆
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         VIEW 2D: LEVEL 4 - ENGINEERING ESCAPE ROOM
+         ======================================================== -->
+    <section id="viewLevel4" class="view-section">
+      <div class="game-level-container level-escape-theme">
+        <!-- Top Control Bar -->
+        <div class="level-topbar">
+          <button class="btn btn-outline-secondary btn-sm" id="btnBackToArenaFromL4">
+            ← BACK TO ARENA
+          </button>
+          <div class="level-hud-center">
+            <span class="level-badge badge-escape">LEVEL 4: ENGINEERING ESCAPE ROOM</span>
+            <span class="level-score-display" id="hudL4Score">Score: 0 / 100</span>
+          </div>
+          <div class="level-hud-actions">
+            <span class="escape-stage-pill" id="escapeStageIndicator">Mission Briefing</span>
+          </div>
+        </div>
+
+        <!-- Escape Room Lab Console Card -->
+        <div class="glass-card escape-lab-card">
+          <!-- Laboratory Blast Door Visual -->
+          <div class="lab-door-viewport">
+            <div class="door-status-strip" id="doorStatusStrip">
+              <div class="status-blinker red" id="doorBlinker"></div>
+              <span id="doorStatusText">FACILITY LOCKED • SECURITY PROTOCOL ACTIVE</span>
+            </div>
+
+            <div class="blast-door-frame" id="blastDoorFrame">
+              <div class="door-panel door-panel-left" id="doorPanelLeft">
+                <div class="door-warning-stripes"></div>
+                <div class="door-hazard-emblem">⚠️ RESTRICTED</div>
+              </div>
+              <div class="door-panel door-panel-right" id="doorPanelRight">
+                <div class="door-warning-stripes"></div>
+                <div class="door-lock-mechanism" id="doorLockMechanism">🔒 SEALED</div>
+              </div>
+
+              <!-- Revealed Lab Interior Behind Doors -->
+              <div class="lab-interior-reveal">
+                <div class="lab-light-beam"></div>
+                <div class="lab-interior-content">
+                  <div class="lab-unlocked-icon">🔬✨</div>
+                  <h3>HIGH-TECH RESEARCH LAB UNLOCKED</h3>
+                  <p>Access Granted to Engineering Laboratory Sector 7</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Progress Lock Indicators (3 Locks) -->
+            <div class="door-locks-row">
+              <div class="lock-pill" id="lockPill1">
+                <span class="lock-icon">🔒</span>
+                <span>Lock 1: Logic</span>
+              </div>
+              <div class="lock-connector"></div>
+              <div class="lock-pill" id="lockPill2">
+                <span class="lock-icon">🔒</span>
+                <span>Lock 2: Component</span>
+              </div>
+              <div class="lock-connector"></div>
+              <div class="lock-pill" id="lockPill3">
+                <span class="lock-icon">🔒</span>
+                <span>Lock 3: Keypad Override</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mission Introductory Briefing -->
+          <div class="escape-briefing-view" id="escapeBriefingView">
+            <div class="briefing-box">
+              <div class="terminal-header">
+                <span class="term-dot red"></span>
+                <span class="term-dot yellow"></span>
+                <span class="term-dot green"></span>
+                <span class="term-title">MISSION DIRECTIVE: DECRYPT AND UNLOCK</span>
+              </div>
+              <div class="briefing-content">
+                <p class="typewriter-text">
+                  <strong>Welcome, Engineer!</strong> Your mission is to solve three challenges and unlock the engineering laboratory.
+                </p>
+                <ul class="mission-checklist">
+                  <li><strong>Stage 1 (Logic Lock):</strong> Identify pattern progression in computational sequences.</li>
+                  <li><strong>Stage 2 (Component ID):</strong> Determine which electrical apparatus converts current to motion.</li>
+                  <li><strong>Stage 3 (Keypad Override):</strong> Convert raw binary command bytes to decimal to disengage the blast door lock.</li>
+                </ul>
+              </div>
+              <button class="btn btn-gold btn-lg btn-pulse" id="btnStartMission">
+                <span>START MISSION 🚀</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- CHALLENGE 1: LOGIC LOCK -->
+          <div class="escape-challenge-card" id="escapeC1Card" style="display: none;">
+            <div class="challenge-step-badge">CHALLENGE 1 OF 3: LOGIC LOCK</div>
+            <div class="sequence-display-box">
+              <div class="seq-label">Find the missing number in the sequence:</div>
+              <div class="seq-row">
+                <span class="seq-item">2</span>
+                <span class="seq-arrow">→</span>
+                <span class="seq-item">4</span>
+                <span class="seq-arrow">→</span>
+                <span class="seq-item">8</span>
+                <span class="seq-arrow">→</span>
+                <span class="seq-item">16</span>
+                <span class="seq-arrow">→</span>
+                <span class="seq-item seq-target">?</span>
+              </div>
+            </div>
+            <div class="options-grid" id="escapeC1OptionsGrid">
+              <!-- Dynamically populated options A: 18, B: 24, C: 32, D: 36 -->
+            </div>
+            <div class="level-action-row">
+              <button class="btn btn-gold" id="btnSubmitEscapeC1" disabled>
+                DECRYPT LOGIC LOCK 🔓
+              </button>
+            </div>
+          </div>
+
+          <!-- CHALLENGE 2: IDENTIFY THE COMPONENT -->
+          <div class="escape-challenge-card" id="escapeC2Card" style="display: none;">
+            <div class="challenge-step-badge">CHALLENGE 2 OF 3: COMPONENT IDENTIFICATION</div>
+            <h3 class="q-title">Which component converts electrical energy into mechanical energy?</h3>
+            <div class="component-visual-grid" id="escapeC2ComponentGrid">
+              <!-- 4 Visual Cards: Motor, Battery, Bulb, Resistor -->
+            </div>
+            <div class="level-action-row">
+              <button class="btn btn-gold" id="btnSubmitEscapeC2" disabled>
+                VERIFY HARDWARE COMPONENT ⚙️
+              </button>
+            </div>
+          </div>
+
+          <!-- CHALLENGE 3: FINAL KEYPAD OVERRIDE -->
+          <div class="escape-challenge-card" id="escapeC3Card" style="display: none;">
+            <div class="challenge-step-badge">CHALLENGE 3 OF 3: DIGITAL KEYPAD OVERRIDE</div>
+            <div class="keypad-mission-box">
+              <div class="keypad-clue-card">
+                <h4>Digital Binary Override Protocol</h4>
+                <p>Convert the 4-bit binary byte into decimal to disengage the main blast door lock:</p>
+                <div class="binary-display-box">
+                  <span class="bin-bit">1</span>
+                  <span class="bin-bit">0</span>
+                  <span class="bin-bit">1</span>
+                  <span class="bin-bit">0</span>
+                  <span class="bin-sub">₂ (Binary) = <span class="calc-hint">8 + 0 + 2 + 0</span></span>
+                </div>
+              </div>
+
+              <!-- Interactive Keypad Console -->
+              <div class="digital-keypad-console">
+                <div class="keypad-screen">
+                  <div class="screen-label">ENTER OVERRIDE PIN:</div>
+                  <div class="screen-display" id="keypadScreenDisplay">_ _</div>
+                </div>
+                <div class="keypad-grid">
+                  <button class="keypad-btn" data-key="1">1</button>
+                  <button class="keypad-btn" data-key="2">2</button>
+                  <button class="keypad-btn" data-key="3">3</button>
+                  <button class="keypad-btn" data-key="4">4</button>
+                  <button class="keypad-btn" data-key="5">5</button>
+                  <button class="keypad-btn" data-key="6">6</button>
+                  <button class="keypad-btn" data-key="7">7</button>
+                  <button class="keypad-btn" data-key="8">8</button>
+                  <button class="keypad-btn" data-key="9">9</button>
+                  <button class="keypad-btn keypad-clear" id="btnKeypadClear">CLR</button>
+                  <button class="keypad-btn" data-key="0">0</button>
+                  <button class="keypad-btn keypad-enter" id="btnKeypadEnter">↵ ENT</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Level Completed Banner -->
+          <div class="level-success-card" id="l4SuccessCard" style="display: none;">
+            <div class="success-icon">🛡️</div>
+            <div class="escape-master-badge">ENGINEERING ESCAPE MASTER</div>
+            <h3>Laboratory Secure Access Granted!</h3>
+            <p id="l4SuccessMsg">All 3 security locks cracked. You have conquered the Engineering Escape Room!</p>
+            <div class="success-score-tag" id="l4AwardedScore">+100 Points Awarded</div>
+            <button class="btn btn-gold" id="btnL4ToArena">
+              RETURN TO ARENA 🏆
+            </button>
+          </div>
         </div>
       </div>
     </section>
@@ -256,7 +907,7 @@
             </svg>
             <div class="score-inner-text">
               <div class="score-big-number" id="resultsScoreNumber">0</div>
-              <div class="score-max-label">/ 10 MARKS</div>
+              <div class="score-max-label" id="resultsScoreMaxLabel">/ 400 MARKS</div>
               <div class="score-pct-badge" id="resultsScorePct">0%</div>
             </div>
           </div>
@@ -272,12 +923,42 @@
               <span class="m-val" id="metricBranch">-</span>
             </div>
             <div class="metric-box success-box">
-              <span class="m-label">Correct Answers</span>
-              <span class="m-val" id="metricCorrect">0</span>
+              <span class="m-label">Completed Challenges</span>
+              <span class="m-val" id="metricCorrect">0 / 4</span>
             </div>
             <div class="metric-box alert-box">
-              <span class="m-label">Incorrect / Skipped</span>
-              <span class="m-val" id="metricIncorrect">0</span>
+              <span class="m-label">Points Earned</span>
+              <span class="m-val" id="metricIncorrect">0 / 400</span>
+            </div>
+          </div>
+
+          <!-- Arena Challenge Scores Breakdown -->
+          <div class="arena-breakdown-card" id="arenaBreakdownCard">
+            <h4 class="breakdown-title">🎮 Engineering Arena Challenge Breakdown</h4>
+            <div class="arena-breakdown-grid">
+              <div class="breakdown-item item-circuit">
+                <span class="b-icon">⚡</span>
+                <span class="b-name">Circuit Master</span>
+                <span class="b-score" id="bScoreCircuit">0 / 100</span>
+              </div>
+              <div class="breakdown-item item-spin">
+                <span class="b-icon">🎡</span>
+                <span class="b-name">Spin Arena</span>
+                <span class="b-score" id="bScoreSpin">0 / 100</span>
+              </div>
+              <div class="breakdown-item item-build">
+                <span class="b-icon">🌉</span>
+                <span class="b-name">Build Zone</span>
+                <span class="b-score" id="bScoreBuild">0 / 100</span>
+              </div>
+              <div class="breakdown-item item-escape">
+                <span class="b-icon">🔐</span>
+                <span class="b-name">Escape Room</span>
+                <span class="b-score" id="bScoreEscape">0 / 100</span>
+              </div>
+            </div>
+            <div class="champion-trophy-banner" id="resultsChampionBanner" style="display: none;">
+              🏆 Official Distinction: ENGINEERING ARENA CHAMPION 🏆
             </div>
           </div>
         </div>
@@ -426,7 +1107,7 @@
             <div class="stat-icon">🎯</div>
             <div class="stat-content">
               <div class="stat-number text-info" id="statAverageScore">0.0</div>
-              <div class="stat-label">Average Score (/10)</div>
+              <div class="stat-label">Average Score (/400)</div>
             </div>
           </div>
           <div class="admin-stat-card">
@@ -502,8 +1183,10 @@
                 <tr>
                   <th>Participant</th>
                   <th>Branch</th>
-                  <th>Score</th>
-                  <th>Quiz Status</th>
+                  <th>Score (/400)</th>
+                  <th>Arena Levels</th>
+                  <th>Champion</th>
+                  <th>Status</th>
                   <th>Certificate</th>
                   <th>Email Status</th>
                   <th>Completion Date</th>
