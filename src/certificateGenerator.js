@@ -215,6 +215,14 @@ async function generateCertificatePdf({
     color: mutedText
   });
 
+  page.drawText("( issued by ARES )", {
+    x: 65,
+    y: 62,
+    size: 6.5,
+    font: fontHelvetica,
+    color: mutedText
+  });
+
   // Small subtle digital seal mark
   page.drawRectangle({
     x: 535,
