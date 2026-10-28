@@ -208,10 +208,73 @@
           </div>
         </div>
 
+        <!-- Arena Sequential Progression Stepper -->
+        <div class="glass-card arena-stepper-card">
+          <div class="stepper-title-row">
+            <span class="stepper-main-heading">🏆 ARENA PROGRESSION & LEVEL UNLOCKING PIPELINE</span>
+            <span class="stepper-sub-heading">Complete each level sequentially to advance towards the Arena Champion credential</span>
+          </div>
+          <div class="arena-stepper-track">
+            <!-- Step 1 -->
+            <div class="stepper-step active" id="stepperStep1">
+              <div class="step-circle"><span class="step-num">1</span><span class="step-check">✓</span></div>
+              <div class="step-content">
+                <span class="step-title">Circuit Master</span>
+                <span class="step-status-pill status-active" id="stepperBadge1">Active ⚡</span>
+              </div>
+            </div>
+            <div class="stepper-connector" id="stepperConn1"></div>
+
+            <!-- Step 2 -->
+            <div class="stepper-step locked" id="stepperStep2">
+              <div class="step-circle"><span class="step-num">2</span><span class="step-check">✓</span></div>
+              <div class="step-content">
+                <span class="step-title">Spin Arena</span>
+                <span class="step-status-pill status-locked" id="stepperBadge2">Locked 🔒</span>
+              </div>
+            </div>
+            <div class="stepper-connector" id="stepperConn2"></div>
+
+            <!-- Step 3 -->
+            <div class="stepper-step locked" id="stepperStep3">
+              <div class="step-circle"><span class="step-num">3</span><span class="step-check">✓</span></div>
+              <div class="step-content">
+                <span class="step-title">Build Zone</span>
+                <span class="step-status-pill status-locked" id="stepperBadge3">Locked 🔒</span>
+              </div>
+            </div>
+            <div class="stepper-connector" id="stepperConn3"></div>
+
+            <!-- Step 4 -->
+            <div class="stepper-step locked" id="stepperStep4">
+              <div class="step-circle"><span class="step-num">4</span><span class="step-check">✓</span></div>
+              <div class="step-content">
+                <span class="step-title">Escape Room</span>
+                <span class="step-status-pill status-locked" id="stepperBadge4">Locked 🔒</span>
+              </div>
+            </div>
+            <div class="stepper-connector" id="stepperConn4"></div>
+
+            <!-- Step 5 -->
+            <div class="stepper-step locked" id="stepperStep5">
+              <div class="step-circle champion-circle">🏆</div>
+              <div class="step-content">
+                <span class="step-title">Champion Certificate</span>
+                <span class="step-status-pill status-locked" id="stepperBadge5">Locked 🔒</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Four Game Cards Grid -->
         <div class="arena-cards-grid">
           <!-- CARD 1: CIRCUIT MASTER -->
           <div class="game-card game-card-circuit" id="cardCircuit">
+            <div class="card-lock-overlay" id="lockOverlayCircuit" style="display: none;">
+              <div class="lock-icon-wrap">🔒</div>
+              <h4>LEVEL LOCKED</h4>
+              <p class="lock-desc">Complete the previous challenge to unlock.</p>
+            </div>
             <div class="game-card-header">
               <span class="level-indicator">LEVEL 1</span>
               <span class="theme-pill theme-circuit">Electrical & Physics</span>
@@ -236,7 +299,12 @@
           </div>
 
           <!-- CARD 2: SPIN ARENA -->
-          <div class="game-card game-card-spin" id="cardSpin">
+          <div class="game-card game-card-spin locked" id="cardSpin">
+            <div class="card-lock-overlay" id="lockOverlaySpin">
+              <div class="lock-icon-wrap">🔒</div>
+              <h4>LEVEL LOCKED</h4>
+              <p class="lock-desc">Complete Level 1: Circuit Master to unlock this challenge.</p>
+            </div>
             <div class="game-card-header">
               <span class="level-indicator">LEVEL 2</span>
               <span class="theme-pill theme-spin">Random Challenge</span>
@@ -251,7 +319,7 @@
             <div class="game-card-footer">
               <div class="game-status-row">
                 <span class="status-dot" id="dotSpin"></span>
-                <span class="status-text" id="statusTextSpin">Not Started</span>
+                <span class="status-text" id="statusTextSpin">Locked 🔒</span>
                 <span class="game-score-badge" id="scoreBadgeSpin">0 / 100</span>
               </div>
               <button class="btn btn-primary btn-block btn-game-play" id="btnPlaySpin">
@@ -261,7 +329,12 @@
           </div>
 
           <!-- CARD 3: BUILD ZONE -->
-          <div class="game-card game-card-build" id="cardBuild">
+          <div class="game-card game-card-build locked" id="cardBuild">
+            <div class="card-lock-overlay" id="lockOverlayBuild">
+              <div class="lock-icon-wrap">🔒</div>
+              <h4>LEVEL LOCKED</h4>
+              <p class="lock-desc">Complete Level 2: Spin Arena to unlock this challenge.</p>
+            </div>
             <div class="game-card-header">
               <span class="level-indicator">LEVEL 3</span>
               <span class="theme-pill theme-build">Structural & Civil</span>
@@ -276,7 +349,7 @@
             <div class="game-card-footer">
               <div class="game-status-row">
                 <span class="status-dot" id="dotBuild"></span>
-                <span class="status-text" id="statusTextBuild">Not Started</span>
+                <span class="status-text" id="statusTextBuild">Locked 🔒</span>
                 <span class="game-score-badge" id="scoreBadgeBuild">0 / 100</span>
               </div>
               <button class="btn btn-primary btn-block btn-game-play" id="btnPlayBuild">
@@ -286,7 +359,12 @@
           </div>
 
           <!-- CARD 4: ENGINEERING ESCAPE ROOM -->
-          <div class="game-card game-card-escape" id="cardEscape">
+          <div class="game-card game-card-escape locked" id="cardEscape">
+            <div class="card-lock-overlay" id="lockOverlayEscape">
+              <div class="lock-icon-wrap">🔒</div>
+              <h4>LEVEL LOCKED</h4>
+              <p class="lock-desc">Complete Level 3: Build Zone to unlock this challenge.</p>
+            </div>
             <div class="game-card-header">
               <span class="level-indicator">LEVEL 4</span>
               <span class="theme-pill theme-escape">Futuristic Lab</span>
@@ -301,7 +379,7 @@
             <div class="game-card-footer">
               <div class="game-status-row">
                 <span class="status-dot" id="dotEscape"></span>
-                <span class="status-text" id="statusTextEscape">Not Started</span>
+                <span class="status-text" id="statusTextEscape">Locked 🔒</span>
                 <span class="game-score-badge" id="scoreBadgeEscape">0 / 100</span>
               </div>
               <button class="btn btn-primary btn-block btn-game-play" id="btnPlayEscape">
@@ -426,18 +504,40 @@
             </div>
           </div>
 
-          <!-- Question Follow-up Section (Revealed when circuit is closed) -->
-          <div class="circuit-question-card" id="circuitQuestionCard" style="display: none;">
-            <div class="question-header">
-              <span class="q-badge">CIRCUIT THEORY CHALLENGE</span>
-              <h3 id="l1QuestionText">What is required for electric current to flow continuously?</h3>
+          <!-- Question Runner Section (1 Question at a time with instant feedback) -->
+          <div class="level-question-runner-card" id="l1QuestionRunner" style="display: none;">
+            <div class="runner-header">
+              <div class="runner-badge-row">
+                <span class="q-badge" id="l1RunnerTopic">CIRCUIT THEORY & SAFETY</span>
+                <span class="runner-counter-tag" id="l1RunnerCounter">Question 1 of 5</span>
+              </div>
+              <div class="runner-progress-track">
+                <div class="runner-progress-bar" id="l1RunnerProgressBar" style="width: 20%;"></div>
+              </div>
+              <h3 class="runner-question-text" id="l1RunnerQuestionText">Loading question...</h3>
             </div>
-            <div class="options-grid" id="l1OptionsGrid">
-              <!-- Dynamically populated -->
+
+            <!-- Options Grid (A, B, C, D) -->
+            <div class="options-grid" id="l1RunnerOptionsGrid">
+              <!-- Dynamically populated options -->
             </div>
-            <div class="level-action-row">
-              <button class="btn btn-gold btn-lg" id="btnSubmitL1" disabled>
-                VERIFY & UNLOCK LEVEL 1 ⚡
+
+            <!-- Real-time Feedback Alert Box (Shown immediately after answer is submitted) -->
+            <div class="runner-feedback-box" id="l1RunnerFeedbackBox" style="display: none;">
+              <div class="feedback-status-row">
+                <span class="feedback-icon" id="l1FeedbackIcon">✅</span>
+                <span class="feedback-title" id="l1FeedbackTitle">Correct Answer!</span>
+                <span class="feedback-pts" id="l1FeedbackPts">+20 Points</span>
+              </div>
+              <p class="feedback-explanation" id="l1FeedbackExplanation">Explanation goes here...</p>
+            </div>
+
+            <div class="runner-action-row">
+              <button class="btn btn-primary btn-lg" id="l1BtnSubmitAnswer" disabled>
+                SUBMIT ANSWER 📝
+              </button>
+              <button class="btn btn-gold btn-lg" id="l1BtnNextQuestion" style="display: none;">
+                NEXT QUESTION →
               </button>
             </div>
           </div>
@@ -448,9 +548,14 @@
             <h3>Circuit Master Unlocked!</h3>
             <p id="l1SuccessMsg">Outstanding work! Circuit assembled and verified with 100% electrical continuity.</p>
             <div class="success-score-tag" id="l1AwardedScore">+100 Points Awarded</div>
-            <button class="btn btn-gold" id="btnL1ToArena">
-              RETURN TO ARENA 🏆
-            </button>
+            <div class="level-success-actions">
+              <button class="btn btn-gold btn-lg btn-pulse" id="btnL1NextLevel">
+                PROCEED TO LEVEL 2: SPIN ARENA →
+              </button>
+              <button class="btn btn-outline-secondary" id="btnL1ToArena">
+                RETURN TO ARENA 🏆
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -503,35 +608,57 @@
             </div>
           </div>
 
-          <!-- Question / Bonus Card (Revealed after spin lands) -->
-          <div class="spin-challenge-card" id="spinChallengeCard" style="display: none;">
-            <!-- Category Banner -->
-            <div class="spin-category-banner" id="spinCategoryBanner">
-              <span class="cat-icon" id="spinCatIcon">⚡</span>
-              <span class="cat-name" id="spinCatName">Electrical Engineering</span>
+          <!-- Category Banner (Revealed after spin lands) -->
+          <div class="spin-category-banner" id="spinCategoryBanner" style="display: none;">
+            <span class="cat-icon" id="spinCatIcon">⚡</span>
+            <span class="cat-name" id="spinCatName">Electrical Engineering</span>
+          </div>
+
+          <!-- Bonus Points Special Display -->
+          <div class="bonus-round-card" id="spinBonusCard" style="display: none;">
+            <div class="bonus-icon">🌟</div>
+            <h3>JACKPOT! BONUS POINTS UNLOCKED!</h3>
+            <p>You landed on the golden Bonus Points segment! 100 Instant engineering points added to your score.</p>
+            <button class="btn btn-gold btn-lg" id="btnClaimBonusPoints">
+              CLAIM BONUS 100 POINTS 🌟
+            </button>
+          </div>
+
+          <!-- Question Runner Section (1 Question at a time with instant feedback) -->
+          <div class="level-question-runner-card" id="l2QuestionRunner" style="display: none;">
+            <div class="runner-header">
+              <div class="runner-badge-row">
+                <span class="q-badge" id="l2RunnerTopic">SPIN ARENA: MULTI-DISCIPLINE CHALLENGE</span>
+                <span class="runner-counter-tag" id="l2RunnerCounter">Question 1 of 5</span>
+              </div>
+              <div class="runner-progress-track">
+                <div class="runner-progress-bar" id="l2RunnerProgressBar" style="width: 20%;"></div>
+              </div>
+              <h3 class="runner-question-text" id="l2RunnerQuestionText">Loading question...</h3>
             </div>
 
-            <!-- Bonus Points Special Display -->
-            <div class="bonus-round-card" id="spinBonusCard" style="display: none;">
-              <div class="bonus-icon">🌟</div>
-              <h3>JACKPOT! BONUS POINTS UNLOCKED!</h3>
-              <p>You landed on the golden Bonus Points segment! 100 Instant engineering points added to your score.</p>
-              <button class="btn btn-gold btn-lg" id="btnClaimBonusPoints">
-                CLAIM BONUS 100 POINTS 🌟
+            <!-- Options Grid (A, B, C, D) -->
+            <div class="options-grid" id="l2RunnerOptionsGrid">
+              <!-- Dynamically populated options -->
+            </div>
+
+            <!-- Real-time Feedback Alert Box -->
+            <div class="runner-feedback-box" id="l2RunnerFeedbackBox" style="display: none;">
+              <div class="feedback-status-row">
+                <span class="feedback-icon" id="l2FeedbackIcon">✅</span>
+                <span class="feedback-title" id="l2FeedbackTitle">Correct Answer!</span>
+                <span class="feedback-pts" id="l2FeedbackPts">+20 Points</span>
+              </div>
+              <p class="feedback-explanation" id="l2FeedbackExplanation">Explanation goes here...</p>
+            </div>
+
+            <div class="runner-action-row">
+              <button class="btn btn-primary btn-lg" id="l2BtnSubmitAnswer" disabled>
+                SUBMIT ANSWER 📝
               </button>
-            </div>
-
-            <!-- Normal Question Display -->
-            <div class="spin-question-section" id="spinQuestionSection">
-              <h3 class="q-title" id="l2QuestionText">Loading question...</h3>
-              <div class="options-grid" id="l2OptionsGrid">
-                <!-- Dynamically populated -->
-              </div>
-              <div class="level-action-row">
-                <button class="btn btn-gold btn-lg" id="btnSubmitL2" disabled>
-                  SUBMIT ANSWER 🏁
-                </button>
-              </div>
+              <button class="btn btn-gold btn-lg" id="l2BtnNextQuestion" style="display: none;">
+                NEXT QUESTION →
+              </button>
             </div>
           </div>
 
@@ -541,9 +668,14 @@
             <h3>Spin Arena Completed!</h3>
             <p id="l2SuccessMsg">Magnificent! Your engineering knowledge across specialized disciplines has been validated.</p>
             <div class="success-score-tag" id="l2AwardedScore">+100 Points Awarded</div>
-            <button class="btn btn-gold" id="btnL2ToArena">
-              RETURN TO ARENA 🏆
-            </button>
+            <div class="level-success-actions">
+              <button class="btn btn-gold btn-lg btn-pulse" id="btnL2NextLevel">
+                PROCEED TO LEVEL 3: BUILD ZONE →
+              </button>
+              <button class="btn btn-outline-secondary" id="btnL2ToArena">
+                RETURN TO ARENA 🏆
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -668,18 +800,40 @@
             </div>
           </div>
 
-          <!-- Question Follow-up Section (Revealed when bridge is built and vehicle tests passage) -->
-          <div class="circuit-question-card" id="buildQuestionCard" style="display: none;">
-            <div class="question-header">
-              <span class="q-badge">STRUCTURAL MECHANICS CHALLENGE</span>
-              <h3 id="l3QuestionText">Why are support beams used in bridges?</h3>
+          <!-- Question Runner Section (1 Question at a time with instant feedback) -->
+          <div class="level-question-runner-card" id="l3QuestionRunner" style="display: none;">
+            <div class="runner-header">
+              <div class="runner-badge-row">
+                <span class="q-badge" id="l3RunnerTopic">STRUCTURAL STABILITY & CIVIL DESIGN</span>
+                <span class="runner-counter-tag" id="l3RunnerCounter">Question 1 of 5</span>
+              </div>
+              <div class="runner-progress-track">
+                <div class="runner-progress-bar" id="l3RunnerProgressBar" style="width: 20%;"></div>
+              </div>
+              <h3 class="runner-question-text" id="l3RunnerQuestionText">Loading question...</h3>
             </div>
-            <div class="options-grid" id="l3OptionsGrid">
-              <!-- Dynamically populated -->
+
+            <!-- Options Grid (A, B, C, D) -->
+            <div class="options-grid" id="l3RunnerOptionsGrid">
+              <!-- Dynamically populated options -->
             </div>
-            <div class="level-action-row">
-              <button class="btn btn-gold btn-lg" id="btnSubmitL3" disabled>
-                VERIFY & UNLOCK LEVEL 3 🌉
+
+            <!-- Real-time Feedback Alert Box -->
+            <div class="runner-feedback-box" id="l3RunnerFeedbackBox" style="display: none;">
+              <div class="feedback-status-row">
+                <span class="feedback-icon" id="l3FeedbackIcon">✅</span>
+                <span class="feedback-title" id="l3FeedbackTitle">Correct Answer!</span>
+                <span class="feedback-pts" id="l3FeedbackPts">+20 Points</span>
+              </div>
+              <p class="feedback-explanation" id="l3FeedbackExplanation">Explanation goes here...</p>
+            </div>
+
+            <div class="runner-action-row">
+              <button class="btn btn-primary btn-lg" id="l3BtnSubmitAnswer" disabled>
+                SUBMIT ANSWER 📝
+              </button>
+              <button class="btn btn-gold btn-lg" id="l3BtnNextQuestion" style="display: none;">
+                NEXT QUESTION →
               </button>
             </div>
           </div>
@@ -690,9 +844,14 @@
             <h3>Junior Engineer Unlocked!</h3>
             <p id="l3SuccessMsg">Brilliant bridge design! Traffic load test passed with 100% structural stability.</p>
             <div class="success-score-tag" id="l3AwardedScore">+100 Points Awarded</div>
-            <button class="btn btn-gold" id="btnL3ToArena">
-              RETURN TO ARENA 🏆
-            </button>
+            <div class="level-success-actions">
+              <button class="btn btn-gold btn-lg btn-pulse" id="btnL3NextLevel">
+                PROCEED TO LEVEL 4: ESCAPE ROOM →
+              </button>
+              <button class="btn btn-outline-secondary" id="btnL3ToArena">
+                RETURN TO ARENA 🏆
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -872,16 +1031,59 @@
             </div>
           </div>
 
+          <!-- Question Runner Section (1 Question at a time with instant feedback) -->
+          <div class="level-question-runner-card" id="l4QuestionRunner" style="display: none;">
+            <div class="runner-header">
+              <div class="runner-badge-row">
+                <span class="q-badge" id="l4RunnerTopic">ADVANCED LOGIC & COMPUTING</span>
+                <span class="runner-counter-tag" id="l4RunnerCounter">Question 1 of 5</span>
+              </div>
+              <div class="runner-progress-track">
+                <div class="runner-progress-bar" id="l4RunnerProgressBar" style="width: 20%;"></div>
+              </div>
+              <h3 class="runner-question-text" id="l4RunnerQuestionText">Loading question...</h3>
+            </div>
+
+            <!-- Options Grid (A, B, C, D) -->
+            <div class="options-grid" id="l4RunnerOptionsGrid">
+              <!-- Dynamically populated options -->
+            </div>
+
+            <!-- Real-time Feedback Alert Box -->
+            <div class="runner-feedback-box" id="l4RunnerFeedbackBox" style="display: none;">
+              <div class="feedback-status-row">
+                <span class="feedback-icon" id="l4FeedbackIcon">✅</span>
+                <span class="feedback-title" id="l4FeedbackTitle">Correct Answer!</span>
+                <span class="feedback-pts" id="l4FeedbackPts">+20 Points</span>
+              </div>
+              <p class="feedback-explanation" id="l4FeedbackExplanation">Explanation goes here...</p>
+            </div>
+
+            <div class="runner-action-row">
+              <button class="btn btn-primary btn-lg" id="l4BtnSubmitAnswer" disabled>
+                SUBMIT ANSWER 📝
+              </button>
+              <button class="btn btn-gold btn-lg" id="l4BtnNextQuestion" style="display: none;">
+                NEXT QUESTION →
+              </button>
+            </div>
+          </div>
+
           <!-- Level Completed Banner -->
           <div class="level-success-card" id="l4SuccessCard" style="display: none;">
             <div class="success-icon">🛡️</div>
             <div class="escape-master-badge">ENGINEERING ESCAPE MASTER</div>
             <h3>Laboratory Secure Access Granted!</h3>
-            <p id="l4SuccessMsg">All 3 security locks cracked. You have conquered the Engineering Escape Room!</p>
+            <p id="l4SuccessMsg">All 3 security locks cracked and all 5 challenges conquered. You have conquered the Engineering Escape Room!</p>
             <div class="success-score-tag" id="l4AwardedScore">+100 Points Awarded</div>
-            <button class="btn btn-gold" id="btnL4ToArena">
-              RETURN TO ARENA 🏆
-            </button>
+            <div class="level-success-actions">
+              <button class="btn btn-gold btn-lg btn-pulse" id="btnL4ClaimCertificate">
+                CLAIM ARENA CHAMPION CERTIFICATE 🏆
+              </button>
+              <button class="btn btn-outline-secondary" id="btnL4ToArena">
+                RETURN TO ARENA 🏆
+              </button>
+            </div>
           </div>
         </div>
       </div>

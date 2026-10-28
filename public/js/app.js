@@ -465,6 +465,16 @@ function setupRegistration() {
 // ENGINEERING ARENA: HUB & INTERACTIVE 4 GAMES
 // ==========================================
 
+function levelKeyToView(levelKey) {
+  switch (levelKey) {
+    case 'circuitMaster': return 'level1';
+    case 'spinArena': return 'level2';
+    case 'buildZone': return 'level3';
+    case 'escapeRoom': return 'level4';
+    default: return 'arena';
+  }
+}
+
 async function enterEngineeringArena() {
   const p = state.participant ||
     JSON.parse(sessionStorage.getItem('tyeb_participant') || 'null') ||
@@ -489,67 +499,168 @@ async function enterEngineeringArena() {
     }
   }
 
-  // Check if attempt already has existing progress
+  await refreshArenaStatus();
+  switchView('arena');
+}
+
+async function refreshArenaStatus() {
   const attempt = state.attempt ||
     JSON.parse(sessionStorage.getItem('tyeb_attempt') || 'null') ||
     JSON.parse(localStorage.getItem('tyeb_attempt') || 'null');
 
-  if (attempt && attempt.arenaLevels) {
-    state.arena.levels = Object.assign(state.arena.levels, attempt.arenaLevels);
-    state.arena.totalScore = attempt.arenaScore || 0;
-    state.arena.completedCount = attempt.completedGamesCount || 0;
-    state.arena.isChampion = attempt.isChampion || false;
-  }
+  if (!attempt) return;
 
-  updateArenaHubUI();
-  switchView('arena');
+  try {
+    const res = await fetch(`/api/arena/status?attemptId=${attempt.attemptId}`);
+    const data = await res.json();
+    if (data.success && data.levels) {
+      state.arena.levels = data.levels;
+      state.arena.totalScore = data.totalScore || 0;
+      state.arena.completedCount = data.completedCount || 0;
+      state.arena.isChampion = Boolean(data.isChampion);
+
+      // Cache locally
+      try {
+        const cur = JSON.parse(sessionStorage.getItem('tyeb_attempt') || '{}');
+        cur.levels = data.levels;
+        cur.arenaScore = data.totalScore;
+        cur.completedGamesCount = data.completedCount;
+        cur.isChampion = data.isChampion;
+        sessionStorage.setItem('tyeb_attempt', JSON.stringify(cur));
+      } catch (e) {}
+
+      updateArenaHubUI();
+    }
+  } catch (err) {
+    console.warn('Could not refresh arena status:', err);
+    updateArenaHubUI();
+  }
 }
 
 function updateArenaHubUI() {
-  const levels = state.arena.levels;
+  const levels = state.arena.levels || {};
   let totalScore = 0;
   let completedCount = 0;
 
   const mapping = [
-    { key: 'circuitMaster', dot: 'dotCircuit', status: 'statusTextCircuit', badge: 'scoreBadgeCircuit', btn: 'btnPlayCircuit', name: 'CIRCUIT MASTER ⚡' },
-    { key: 'spinArena', dot: 'dotSpin', status: 'statusTextSpin', badge: 'scoreBadgeSpin', btn: 'btnPlaySpin', name: 'SPIN ARENA 🎡' },
-    { key: 'buildZone', dot: 'dotBuild', status: 'statusTextBuild', badge: 'scoreBadgeBuild', btn: 'btnPlayBuild', name: 'BUILD ZONE 🌉' },
-    { key: 'escapeRoom', dot: 'dotEscape', status: 'statusTextEscape', badge: 'scoreBadgeEscape', btn: 'btnPlayEscape', name: 'ESCAPE ROOM 🔐' }
+    { key: 'circuitMaster', card: 'cardCircuit', overlay: 'lockOverlayCircuit', dot: 'dotCircuit', status: 'statusTextCircuit', badge: 'scoreBadgeCircuit', btn: 'btnPlayCircuit', name: 'CIRCUIT MASTER ⚡', step: 'stepperStep1', stepBadge: 'stepperBadge1', conn: 'stepperConn1' },
+    { key: 'spinArena', card: 'cardSpin', overlay: 'lockOverlaySpin', dot: 'dotSpin', status: 'statusTextSpin', badge: 'scoreBadgeSpin', btn: 'btnPlaySpin', name: 'SPIN ARENA 🎡', step: 'stepperStep2', stepBadge: 'stepperBadge2', conn: 'stepperConn2' },
+    { key: 'buildZone', card: 'cardBuild', overlay: 'lockOverlayBuild', dot: 'dotBuild', status: 'statusTextBuild', badge: 'scoreBadgeBuild', btn: 'btnPlayBuild', name: 'BUILD ZONE 🌉', step: 'stepperStep3', stepBadge: 'stepperBadge3', conn: 'stepperConn3' },
+    { key: 'escapeRoom', card: 'cardEscape', overlay: 'lockOverlayEscape', dot: 'dotEscape', status: 'statusTextEscape', badge: 'scoreBadgeEscape', btn: 'btnPlayEscape', name: 'ESCAPE ROOM 🔐', step: 'stepperStep4', stepBadge: 'stepperBadge4', conn: 'stepperConn4' }
   ];
 
   mapping.forEach(m => {
     const lvl = levels[m.key] || {};
-    const isComp = Boolean(lvl.completed);
+    const isUnlocked = m.key === 'circuitMaster' ? true : Boolean(lvl.unlocked);
+    const isComp = Boolean(lvl.completed || lvl.status === 'Completed');
     const score = Number(lvl.score || 0);
+
     totalScore += score;
     if (isComp) completedCount++;
 
+    const cardEl = document.getElementById(m.card);
+    const overlayEl = document.getElementById(m.overlay);
     const dotEl = document.getElementById(m.dot);
     const statusEl = document.getElementById(m.status);
     const badgeEl = document.getElementById(m.badge);
     const btnEl = document.getElementById(m.btn);
 
-    if (dotEl) dotEl.className = `status-dot ${isComp ? 'completed' : ''}`;
-    if (statusEl) statusEl.textContent = isComp ? 'Completed ✅' : 'Not Started';
+    // Update Card Lock & Badges
+    if (cardEl) {
+      if (isUnlocked) {
+        cardEl.classList.remove('locked');
+      } else {
+        cardEl.classList.add('locked');
+      }
+    }
+
+    if (overlayEl) {
+      overlayEl.style.display = isUnlocked ? 'none' : 'flex';
+    }
+
+    if (dotEl) {
+      dotEl.className = `status-dot ${isComp ? 'completed' : (isUnlocked ? 'active' : 'locked')}`;
+    }
+
+    if (statusEl) {
+      if (isComp) {
+        statusEl.textContent = 'Completed ✅';
+      } else if (isUnlocked) {
+        statusEl.textContent = 'Active ⚡';
+      } else {
+        statusEl.textContent = 'Locked 🔒';
+      }
+    }
+
     if (badgeEl) {
       badgeEl.textContent = `${score} / 100`;
       badgeEl.className = `game-score-badge ${isComp ? 'completed' : ''}`;
     }
+
     if (btnEl) {
-      btnEl.textContent = isComp ? `REPLAY ${m.name}` : `PLAY ${m.name}`;
-      if (isComp) {
-        btnEl.classList.remove('btn-primary');
+      if (!isUnlocked) {
+        btnEl.textContent = `LOCKED 🔒`;
+        btnEl.classList.remove('btn-primary', 'btn-outline-gold');
+        btnEl.classList.add('btn-outline-secondary');
+      } else if (isComp) {
+        btnEl.textContent = `REPLAY ${m.name}`;
+        btnEl.classList.remove('btn-primary', 'btn-outline-secondary');
         btnEl.classList.add('btn-outline-gold');
       } else {
-        btnEl.classList.remove('btn-outline-gold');
+        btnEl.textContent = `PLAY ${m.name}`;
+        btnEl.classList.remove('btn-outline-gold', 'btn-outline-secondary');
         btnEl.classList.add('btn-primary');
       }
     }
+
+    // Update Progression Stepper Step
+    const stepEl = document.getElementById(m.step);
+    const stepBadgeEl = document.getElementById(m.stepBadge);
+    const connEl = document.getElementById(m.conn);
+
+    if (stepEl) {
+      stepEl.className = `stepper-step ${isComp ? 'completed' : (isUnlocked ? 'active' : 'locked')}`;
+    }
+
+    if (stepBadgeEl) {
+      if (isComp) {
+        stepBadgeEl.className = 'step-status-pill status-completed';
+        stepBadgeEl.textContent = 'Done ✅';
+      } else if (isUnlocked) {
+        stepBadgeEl.className = 'step-status-pill status-active';
+        stepBadgeEl.textContent = 'Active ⚡';
+      } else {
+        stepBadgeEl.className = 'step-status-pill status-locked';
+        stepBadgeEl.textContent = 'Locked 🔒';
+      }
+    }
+
+    if (connEl) {
+      connEl.className = `stepper-connector ${isComp ? 'completed' : ''}`;
+    }
   });
+
+  // Step 5: Champion Certificate Stepper
+  const step5 = document.getElementById('stepperStep5');
+  const badge5 = document.getElementById('stepperBadge5');
+  const isChampion = completedCount === 4;
+
+  if (step5) {
+    step5.className = `stepper-step ${isChampion ? 'completed champion-unlocked' : 'locked'}`;
+  }
+  if (badge5) {
+    if (isChampion) {
+      badge5.className = 'step-status-pill status-completed';
+      badge5.textContent = 'Unlocked 🏆';
+    } else {
+      badge5.className = 'step-status-pill status-locked';
+      badge5.textContent = 'Locked 🔒';
+    }
+  }
 
   state.arena.totalScore = totalScore;
   state.arena.completedCount = completedCount;
-  state.arena.isChampion = completedCount === 4;
+  state.arena.isChampion = isChampion;
 
   const totalScoreEl = document.getElementById('arenaTotalScore');
   if (totalScoreEl) totalScoreEl.textContent = `${totalScore} / 400`;
@@ -562,34 +673,68 @@ function updateArenaHubUI() {
 
   const champBadge = document.getElementById('arenaChampionBadgeHub');
   if (champBadge) {
-    champBadge.style.display = state.arena.isChampion ? 'block' : 'none';
+    champBadge.style.display = isChampion ? 'block' : 'none';
   }
 
   const submitHint = document.getElementById('arenaSubmitHint');
   if (submitHint) {
-    if (completedCount === 4) {
+    if (isChampion) {
       submitHint.innerHTML = '🎉 <strong>All 4 challenges completed!</strong> Claim your verified E-Certificate with full 400 marks and Arena Champion title!';
     } else if (completedCount > 0) {
-      submitHint.innerHTML = `You have completed ${completedCount} of 4 challenges (${totalScore} pts). Complete all 4 to earn the Champion distinction, or claim now!`;
+      submitHint.innerHTML = `You have completed ${completedCount} of 4 challenges (${totalScore} pts). Complete all 4 levels sequentially to unlock your Champion Certificate!`;
     } else {
-      submitHint.textContent = 'Play challenges to accumulate points. Complete all 4 levels for full 400 marks and the Champion credential!';
+      submitHint.textContent = 'Play challenges sequentially. Complete all 4 levels for full 400 marks and the Champion credential!';
     }
   }
 }
 
+async function navigateToArenaLevel(levelKey) {
+  AudioFX.playClick();
+  const attempt = state.attempt ||
+    JSON.parse(sessionStorage.getItem('tyeb_attempt') || 'null') ||
+    JSON.parse(localStorage.getItem('tyeb_attempt') || 'null');
+
+  if (!attempt) {
+    showToast('Please register first.', 'warning');
+    switchView('landing');
+    return;
+  }
+
+  // Check unlocking status
+  const lvl = state.arena.levels[levelKey] || {};
+  const isUnlocked = levelKey === 'circuitMaster' ? true : Boolean(lvl.unlocked);
+
+  if (!isUnlocked) {
+    AudioFX.playClick();
+    showToast('🔒 This level is locked. Complete the previous level in sequence first!', 'warning');
+    return;
+  }
+
+  switchView(levelKeyToView(levelKey));
+  await loadAndStartLevel(levelKey);
+}
+
 function setupArenaNavigation() {
-  // Hub Play buttons
-  const btnCircuit = document.getElementById('btnPlayCircuit');
-  if (btnCircuit) btnCircuit.addEventListener('click', () => { AudioFX.playClick(); switchView('level1'); });
+  // Hub Play buttons and cards
+  const levels = [
+    { key: 'circuitMaster', btn: 'btnPlayCircuit', card: 'cardCircuit' },
+    { key: 'spinArena', btn: 'btnPlaySpin', card: 'cardSpin' },
+    { key: 'buildZone', btn: 'btnPlayBuild', card: 'cardBuild' },
+    { key: 'escapeRoom', btn: 'btnPlayEscape', card: 'cardEscape' }
+  ];
 
-  const btnSpin = document.getElementById('btnPlaySpin');
-  if (btnSpin) btnSpin.addEventListener('click', () => { AudioFX.playClick(); switchView('level2'); });
+  levels.forEach(lvl => {
+    const btn = document.getElementById(lvl.btn);
+    if (btn) btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      navigateToArenaLevel(lvl.key);
+    });
 
-  const btnBuild = document.getElementById('btnPlayBuild');
-  if (btnBuild) btnBuild.addEventListener('click', () => { AudioFX.playClick(); switchView('level3'); });
-
-  const btnEscape = document.getElementById('btnPlayEscape');
-  if (btnEscape) btnEscape.addEventListener('click', () => { AudioFX.playClick(); switchView('level4'); });
+    const card = document.getElementById(lvl.card);
+    if (card) card.addEventListener('click', () => {
+      navigateToArenaLevel(lvl.key);
+    });
+  });
 
   // Back to Arena buttons
   const backButtons = [
@@ -610,6 +755,360 @@ function setupArenaNavigation() {
 }
 
 // ----------------------------------------------------
+// COMMON ARENA LEVEL LOADER & QUESTION RUNNER
+// ----------------------------------------------------
+
+async function recordInteractiveAction(levelKey, payload = {}) {
+  const attempt = state.attempt ||
+    JSON.parse(sessionStorage.getItem('tyeb_attempt') || 'null') ||
+    JSON.parse(localStorage.getItem('tyeb_attempt') || 'null');
+
+  if (!attempt) return null;
+
+  try {
+    const res = await fetch('/api/arena/interactive-action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        attemptId: attempt.attemptId,
+        levelKey,
+        payload
+      })
+    });
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    console.error('Failed to record interactive action:', err);
+    return null;
+  }
+}
+
+async function loadAndStartLevel(levelKey) {
+  const attempt = state.attempt ||
+    JSON.parse(sessionStorage.getItem('tyeb_attempt') || 'null') ||
+    JSON.parse(localStorage.getItem('tyeb_attempt') || 'null');
+
+  if (!attempt) return;
+
+  const viewPrefix = {
+    circuitMaster: 'l1',
+    spinArena: 'l2',
+    buildZone: 'l3',
+    escapeRoom: 'l4'
+  }[levelKey];
+
+  try {
+    const res = await fetch(`/api/arena/level/${levelKey}?attemptId=${attempt.attemptId}`);
+    const data = await res.json();
+
+    if (!res.ok) {
+      showToast(data.error || 'Failed to load level data.', 'error');
+      switchView('arena');
+      return;
+    }
+
+    state.arena.levels[levelKey] = Object.assign(state.arena.levels[levelKey] || {}, data);
+
+    const hudScore = document.getElementById(`hud${viewPrefix.toUpperCase()}Score`);
+    if (hudScore) hudScore.textContent = `Score: ${data.score || 0} / 100`;
+
+    // If level is already completed: show success card
+    if (data.completed) {
+      showLevelCompletedCard(levelKey, data);
+      return;
+    }
+
+    // If interactive challenge already done: resume question runner
+    if (data.interactiveCompleted) {
+      if (levelKey === 'circuitMaster') {
+        const gap = document.getElementById('gapSlot');
+        if (gap) {
+          gap.classList.add('connected');
+          gap.innerHTML = '<span style="color:#00f0ff; font-weight:800; font-size:12px;">⚡ COPPER CONDUCTOR CONNECTED (CIRCUIT CLOSED) ⚡</span>';
+        }
+        document.querySelectorAll('.wire-trace').forEach(t => t.classList.add('energized'));
+        const bulb = document.getElementById('bulbVisual');
+        if (bulb) bulb.classList.add('powered');
+        const bulbStatus = document.getElementById('bulbStatusText');
+        if (bulbStatus) { bulbStatus.textContent = 'ILLUMINATED (9V DC) 💡'; bulbStatus.classList.add('powered'); }
+      } else if (levelKey === 'spinArena') {
+        const banner = document.getElementById('spinCategoryBanner');
+        if (banner) banner.style.display = 'flex';
+      } else if (levelKey === 'buildZone') {
+        ['foundation', 'deck', 'arch'].forEach(type => {
+          const slot = document.getElementById(`slot${type.charAt(0).toUpperCase() + type.slice(1)}`);
+          if (slot) slot.classList.add('filled');
+        });
+      } else if (levelKey === 'escapeRoom') {
+        const blast = document.getElementById('blastDoorFrame');
+        if (blast) blast.classList.add('unlocked');
+        ['lockPill1', 'lockPill2', 'lockPill3'].forEach(id => {
+          const pill = document.getElementById(id);
+          if (pill) pill.classList.add('unlocked');
+        });
+      }
+
+      startLevelQuestionRunner(levelKey, data.questions, data.answers || {});
+    }
+  } catch (err) {
+    console.error('Error loading level questions:', err);
+  }
+}
+
+function startLevelQuestionRunner(levelKey, questions = [], existingAnswers = {}) {
+  const viewPrefix = {
+    circuitMaster: 'l1',
+    spinArena: 'l2',
+    buildZone: 'l3',
+    escapeRoom: 'l4'
+  }[levelKey];
+
+  const runnerCard = document.getElementById(`${viewPrefix}QuestionRunner`);
+  if (!runnerCard) return;
+  runnerCard.style.display = 'block';
+
+  // Find first unanswered question
+  let startIndex = 0;
+  for (let i = 0; i < questions.length; i++) {
+    if (existingAnswers[questions[i].id]) {
+      startIndex = i + 1;
+    } else {
+      break;
+    }
+  }
+
+  if (startIndex >= questions.length && questions.length > 0) {
+    completeAndShowLevelSuccess(levelKey);
+    return;
+  }
+
+  renderQuestion(startIndex);
+
+  function renderQuestion(idx) {
+    if (idx >= questions.length) {
+      completeAndShowLevelSuccess(levelKey);
+      return;
+    }
+
+    const q = questions[idx];
+    let selectedOption = null;
+
+    const counterEl = document.getElementById(`${viewPrefix}RunnerCounter`);
+    const progressEl = document.getElementById(`${viewPrefix}RunnerProgressBar`);
+    const textEl = document.getElementById(`${viewPrefix}RunnerQuestionText`);
+    const optionsGrid = document.getElementById(`${viewPrefix}RunnerOptionsGrid`);
+    const feedbackBox = document.getElementById(`${viewPrefix}RunnerFeedbackBox`);
+    const submitBtn = document.getElementById(`${viewPrefix}BtnSubmitAnswer`);
+    const nextBtn = document.getElementById(`${viewPrefix}BtnNextQuestion`);
+
+    if (counterEl) counterEl.textContent = `Question ${idx + 1} of ${questions.length}`;
+    if (progressEl) progressEl.style.width = `${((idx + 1) / questions.length) * 100}%`;
+    if (textEl) textEl.textContent = q.question;
+
+    if (feedbackBox) feedbackBox.style.display = 'none';
+    if (nextBtn) nextBtn.style.display = 'none';
+    if (submitBtn) {
+      submitBtn.style.display = 'inline-block';
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'SUBMIT ANSWER 📝';
+    }
+
+    if (optionsGrid) {
+      optionsGrid.innerHTML = '';
+      const letters = ['A', 'B', 'C', 'D'];
+      letters.forEach(letter => {
+        const text = q.options[letter];
+        if (!text) return;
+        const card = document.createElement('div');
+        card.className = 'option-card';
+        card.innerHTML = `
+          <div class="option-badge">${letter}</div>
+          <div class="option-label">${text}</div>
+        `;
+
+        card.addEventListener('click', () => {
+          if (card.classList.contains('disabled')) return;
+          AudioFX.playClick();
+          selectedOption = letter;
+
+          optionsGrid.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
+          card.classList.add('selected');
+          if (submitBtn) submitBtn.disabled = false;
+        });
+
+        optionsGrid.appendChild(card);
+      });
+    }
+
+    // Submit Answer Action
+    if (submitBtn) {
+      submitBtn.onclick = async () => {
+        if (!selectedOption) return;
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'VERIFYING ANSWER... ⏳';
+
+        const attempt = state.attempt ||
+          JSON.parse(sessionStorage.getItem('tyeb_attempt') || 'null') ||
+          JSON.parse(localStorage.getItem('tyeb_attempt') || 'null');
+
+        try {
+          const res = await fetch('/api/arena/submit-answer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              attemptId: attempt ? attempt.attemptId : null,
+              levelKey,
+              questionId: q.id,
+              selectedOption
+            })
+          });
+
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Answer evaluation failed');
+
+          // Freeze options
+          optionsGrid.querySelectorAll('.option-card').forEach(c => c.classList.add('disabled'));
+
+          // Highlight correct and incorrect
+          optionsGrid.querySelectorAll('.option-card').forEach(c => {
+            const badge = c.querySelector('.option-badge');
+            const letter = badge ? badge.textContent.trim() : '';
+            if (letter === data.correctOption) {
+              c.classList.add('correct-revealed');
+            } else if (letter === selectedOption && !data.isCorrect) {
+              c.classList.add('incorrect-revealed');
+            }
+          });
+
+          // Show feedback box
+          if (feedbackBox) {
+            feedbackBox.className = `runner-feedback-box ${data.isCorrect ? 'correct' : 'incorrect'}`;
+            const iconEl = document.getElementById(`${viewPrefix}FeedbackIcon`);
+            const titleEl = document.getElementById(`${viewPrefix}FeedbackTitle`);
+            const ptsEl = document.getElementById(`${viewPrefix}FeedbackPts`);
+            const expEl = document.getElementById(`${viewPrefix}FeedbackExplanation`);
+
+            if (iconEl) iconEl.textContent = data.isCorrect ? '✅' : '❌';
+            if (titleEl) titleEl.textContent = data.isCorrect ? 'Correct Answer!' : `Incorrect (Correct Answer: Option ${data.correctOption})`;
+            if (ptsEl) ptsEl.textContent = data.isCorrect ? '+20 Points' : '0 Points';
+            if (expEl) expEl.textContent = data.explanation || '';
+            feedbackBox.style.display = 'block';
+          }
+
+          if (data.isCorrect) {
+            AudioFX.playCelebration();
+          } else {
+            AudioFX.playClick();
+          }
+
+          submitBtn.style.display = 'none';
+
+          if (nextBtn) {
+            nextBtn.style.display = 'inline-block';
+            if (idx < questions.length - 1) {
+              nextBtn.textContent = 'NEXT QUESTION →';
+              nextBtn.onclick = () => {
+                AudioFX.playClick();
+                renderQuestion(idx + 1);
+              };
+            } else {
+              nextBtn.textContent = levelKey === 'escapeRoom' ? 'COMPLETE ARENA & UNLOCK CHAMPION 🏆' : 'COMPLETE LEVEL & UNLOCK NEXT LEVEL 🚀';
+              nextBtn.onclick = () => {
+                AudioFX.playClick();
+                completeAndShowLevelSuccess(levelKey);
+              };
+            }
+          }
+        } catch (err) {
+          showToast(err.message, 'error');
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'SUBMIT ANSWER 📝';
+        }
+      };
+    }
+  }
+
+  async function completeAndShowLevelSuccess(key) {
+    const attempt = state.attempt ||
+      JSON.parse(sessionStorage.getItem('tyeb_attempt') || 'null') ||
+      JSON.parse(localStorage.getItem('tyeb_attempt') || 'null');
+
+    try {
+      const res = await fetch('/api/arena/complete-level', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          attemptId: attempt ? attempt.attemptId : null,
+          levelKey: key
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to complete level.');
+
+      launchConfetti();
+      AudioFX.playCelebration();
+
+      if (runnerCard) runnerCard.style.display = 'none';
+
+      showLevelCompletedCard(key, data);
+      await refreshArenaStatus();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+}
+
+function showLevelCompletedCard(levelKey, data = {}) {
+  const viewPrefix = {
+    circuitMaster: 'l1',
+    spinArena: 'l2',
+    buildZone: 'l3',
+    escapeRoom: 'l4'
+  }[levelKey];
+
+  const successCard = document.getElementById(`${viewPrefix}SuccessCard`);
+  if (!successCard) return;
+
+  const score = data.score !== undefined ? data.score : (data.levelScore !== undefined ? data.levelScore : 100);
+  const scoreTag = document.getElementById(`${viewPrefix}AwardedScore`);
+  if (scoreTag) scoreTag.textContent = `+${score} Points Awarded!`;
+
+  const hudScoreEl = document.getElementById(`hud${viewPrefix.toUpperCase()}Score`);
+  if (hudScoreEl) hudScoreEl.textContent = `Score: ${score} / 100`;
+
+  successCard.style.display = 'block';
+
+  // Setup Next Level buttons
+  const nextBtnMapping = {
+    circuitMaster: { btnId: 'btnL1NextLevel', targetKey: 'spinArena' },
+    spinArena: { btnId: 'btnL2NextLevel', targetKey: 'buildZone' },
+    buildZone: { btnId: 'btnL3NextLevel', targetKey: 'escapeRoom' }
+  };
+
+  if (nextBtnMapping[levelKey]) {
+    const btn = document.getElementById(nextBtnMapping[levelKey].btnId);
+    if (btn) {
+      btn.onclick = () => {
+        AudioFX.playClick();
+        navigateToArenaLevel(nextBtnMapping[levelKey].targetKey);
+      };
+    }
+  }
+
+  // Level 4 Claim Certificate button
+  if (levelKey === 'escapeRoom') {
+    const champBtn = document.getElementById('btnL4ClaimCertificate');
+    if (champBtn) {
+      champBtn.onclick = () => {
+        AudioFX.playClick();
+        finishEngineeringArena();
+      };
+    }
+  }
+}
+
+// ----------------------------------------------------
 // LEVEL 1: CIRCUIT MASTER (INTERACTIVE BLUE & CYAN)
 // ----------------------------------------------------
 function setupLevel1CircuitMaster() {
@@ -619,14 +1118,11 @@ function setupLevel1CircuitMaster() {
   const quickConnectBtn = document.getElementById('btnQuickConnectWire');
   const resetBtn = document.getElementById('btnResetCircuit');
   const hintBtn = document.getElementById('btnHintL1');
-  const questionCard = document.getElementById('circuitQuestionCard');
-  const successCard = document.getElementById('l1SuccessCard');
-  const submitBtn = document.getElementById('btnSubmitL1');
   const bulbVisual = document.getElementById('bulbVisual');
   const bulbStatus = document.getElementById('bulbStatusText');
   const wireTraces = document.querySelectorAll('.wire-trace');
 
-  function completeCircuit() {
+  async function completeCircuit() {
     AudioFX.playClick();
     state.arena.levels.circuitMaster.wireConnected = true;
 
@@ -649,17 +1145,15 @@ function setupLevel1CircuitMaster() {
     AudioFX.playCelebration();
     showToast('Circuit completed! Electrical current is flowing through the filament!', 'success');
 
-    // Reveal Follow-up Question
-    renderLevel1Question();
-    if (questionCard) {
-      questionCard.style.display = 'block';
-      questionCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
+    // Record action on backend
+    await recordInteractiveAction('circuitMaster', { wireConnected: true });
+
+    // Start 5-question runner
+    await loadAndStartLevel('circuitMaster');
   }
 
   function resetCircuit() {
     state.arena.levels.circuitMaster.wireConnected = false;
-    state.arena.levels.circuitMaster.selectedOption = null;
 
     if (gapSlot) {
       gapSlot.classList.remove('connected');
@@ -673,41 +1167,12 @@ function setupLevel1CircuitMaster() {
       bulbStatus.classList.remove('powered');
     }
 
-    if (questionCard) questionCard.style.display = 'none';
+    const runner = document.getElementById('l1QuestionRunner');
+    if (runner) runner.style.display = 'none';
+    const successCard = document.getElementById('l1SuccessCard');
     if (successCard) successCard.style.display = 'none';
-    if (submitBtn) submitBtn.disabled = true;
+
     showToast('Circuit reset to open state.', 'info');
-  }
-
-  function renderLevel1Question() {
-    const grid = document.getElementById('l1OptionsGrid');
-    if (!grid) return;
-    grid.innerHTML = '';
-
-    const options = {
-      A: 'A complete circuit',
-      B: 'A broken wire',
-      C: 'An open circuit',
-      D: 'An empty battery'
-    };
-
-    ['A', 'B', 'C', 'D'].forEach(letter => {
-      const card = document.createElement('div');
-      card.className = `option-card ${state.arena.levels.circuitMaster.selectedOption === letter ? 'selected' : ''}`;
-      card.innerHTML = `
-        <div class="option-badge">${letter}</div>
-        <div class="option-label">${options[letter]}</div>
-      `;
-
-      card.addEventListener('click', () => {
-        AudioFX.playClick();
-        state.arena.levels.circuitMaster.selectedOption = letter;
-        renderLevel1Question();
-        if (submitBtn) submitBtn.disabled = false;
-      });
-
-      grid.appendChild(card);
-    });
   }
 
   // Drag and drop event listeners
@@ -741,63 +1206,6 @@ function setupLevel1CircuitMaster() {
       showToast('💡 Hint: Connect the conductive copper wire across the open terminal gap to close the loop and power the bulb!', 'info');
     });
   }
-
-  // Submit Level 1
-  if (submitBtn) {
-    submitBtn.addEventListener('click', async () => {
-      const selectedOption = state.arena.levels.circuitMaster.selectedOption;
-      if (!selectedOption) return;
-
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'VERIFYING CIRCUIT CONTINUITY... ⏳';
-
-      const participant = state.participant || JSON.parse(sessionStorage.getItem('tyeb_participant') || 'null');
-      const attempt = state.attempt || JSON.parse(sessionStorage.getItem('tyeb_attempt') || 'null');
-
-      try {
-        const res = await fetch('/api/arena/submit-level', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            participantId: participant ? participant.participantId : null,
-            attemptId: attempt ? attempt.attemptId : null,
-            levelKey: 'circuitMaster',
-            payload: {
-              wireConnected: true,
-              selectedOption: selectedOption
-            }
-          })
-        });
-
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Level verification failed.');
-
-        state.arena.levels.circuitMaster.completed = true;
-        state.arena.levels.circuitMaster.score = data.score || 100;
-
-        AudioFX.playCelebration();
-        launchConfetti();
-
-        if (questionCard) questionCard.style.display = 'none';
-        if (successCard) {
-          successCard.style.display = 'block';
-          const scoreTag = document.getElementById('l1AwardedScore');
-          if (scoreTag) scoreTag.textContent = `+${data.score || 100} Points Awarded!`;
-        }
-
-        const hudScore = document.getElementById('hudL1Score');
-        if (hudScore) hudScore.textContent = `Score: ${data.score || 100} / 100`;
-
-        updateArenaHubUI();
-        showToast(data.message || 'Circuit Master Unlocked!', 'success');
-      } catch (err) {
-        showToast(err.message, 'error');
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'VERIFY & UNLOCK LEVEL 1 ⚡';
-      }
-    });
-  }
 }
 
 // ----------------------------------------------------
@@ -807,12 +1215,8 @@ function setupLevel2SpinArena() {
   const canvas = document.getElementById('spinWheelCanvas');
   const spinBtn = document.getElementById('btnSpinWheel');
   const statusText = document.getElementById('spinStatusText');
-  const challengeCard = document.getElementById('spinChallengeCard');
   const bonusCard = document.getElementById('spinBonusCard');
-  const questionSection = document.getElementById('spinQuestionSection');
-  const submitBtn = document.getElementById('btnSubmitL2');
   const claimBonusBtn = document.getElementById('btnClaimBonusPoints');
-  const successCard = document.getElementById('l2SuccessCard');
 
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
@@ -902,7 +1306,6 @@ function setupLevel2SpinArena() {
     ctx.restore();
   }
 
-  // Initial render
   drawWheel(0);
 
   function spinTheWheel() {
@@ -911,19 +1314,13 @@ function setupLevel2SpinArena() {
     spinBtn.disabled = true;
     if (statusText) statusText.textContent = 'Wheel spinning at high velocity... Hold on!';
 
-    // Pick target category
     const targetIdx = Math.floor(Math.random() * totalSlices);
     const targetCategory = categories[targetIdx];
 
-    // Pointer is at TOP center (angle 3*PI/2)
-    // Slices rotate clockwise with currentRotation.
-    // Center of target slice i is: targetIdx * sliceAngle + sliceAngle / 2
-    // We want: (targetCenter + finalAngle) % (2*PI) === 3*PI/2
     const targetCenter = targetIdx * sliceAngle + sliceAngle / 2;
     const topPointerAngle = (3 * Math.PI) / 2;
     let targetAngle = topPointerAngle - targetCenter;
 
-    // Ensure forward spins (5 to 7 full rotations)
     const extraSpins = (5 + Math.floor(Math.random() * 3)) * (2 * Math.PI);
     const startAngle = currentRotation % (2 * Math.PI);
     let delta = targetAngle - startAngle;
@@ -957,185 +1354,41 @@ function setupLevel2SpinArena() {
     requestAnimationFrame(animate);
   }
 
-  function handleSpinResult(cat) {
+  async function handleSpinResult(cat) {
     AudioFX.playCelebration();
     state.arena.levels.spinArena.selectedCategory = cat.name;
 
     if (statusText) statusText.textContent = `Wheel stopped on: ${cat.name}!`;
 
-    // Category banner update
     const catNameEl = document.getElementById('spinCatName');
     const catIconEl = document.getElementById('spinCatIcon');
+    const bannerEl = document.getElementById('spinCategoryBanner');
+
     if (catNameEl) catNameEl.textContent = cat.name;
     if (catIconEl) catIconEl.textContent = cat.icon;
+    if (bannerEl) bannerEl.style.display = 'flex';
 
-    if (challengeCard) {
-      challengeCard.style.display = 'block';
-      challengeCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
+    await recordInteractiveAction('spinArena', { spinCompleted: true, category: cat.name });
 
     if (cat.name === 'Bonus Points') {
       state.arena.levels.spinArena.isBonus = true;
       if (bonusCard) bonusCard.style.display = 'block';
-      if (questionSection) questionSection.style.display = 'none';
     } else {
       state.arena.levels.spinArena.isBonus = false;
       if (bonusCard) bonusCard.style.display = 'none';
-      if (questionSection) questionSection.style.display = 'block';
-      renderSpinQuestion(cat.name);
+      await loadAndStartLevel('spinArena');
     }
   }
 
-  function renderSpinQuestion(categoryName) {
-    const qText = document.getElementById('l2QuestionText');
-    const grid = document.getElementById('l2OptionsGrid');
-    if (!grid) return;
-    grid.innerHTML = '';
-
-    // Standard high-yield engineering question
-    const questionData = {
-      question: 'Which device converts electrical energy into mechanical energy?',
-      options: {
-        A: 'Electric motor',
-        B: 'Generator',
-        C: 'Transformer',
-        D: 'Battery'
-      }
-    };
-
-    if (qText) qText.textContent = questionData.question;
-
-    ['A', 'B', 'C', 'D'].forEach(letter => {
-      const card = document.createElement('div');
-      card.className = `option-card ${state.arena.levels.spinArena.selectedOption === letter ? 'selected' : ''}`;
-      card.innerHTML = `
-        <div class="option-badge">${letter}</div>
-        <div class="option-label">${questionData.options[letter]}</div>
-      `;
-
-      card.addEventListener('click', () => {
-        AudioFX.playClick();
-        state.arena.levels.spinArena.selectedOption = letter;
-        renderSpinQuestion(categoryName);
-        if (submitBtn) submitBtn.disabled = false;
-      });
-
-      grid.appendChild(card);
+  if (claimBonusBtn) {
+    claimBonusBtn.addEventListener('click', async () => {
+      AudioFX.playCelebration();
+      if (bonusCard) bonusCard.style.display = 'none';
+      await loadAndStartLevel('spinArena');
     });
   }
 
   if (spinBtn) spinBtn.addEventListener('click', spinTheWheel);
-
-  // Claim Bonus Points
-  if (claimBonusBtn) {
-    claimBonusBtn.addEventListener('click', async () => {
-      claimBonusBtn.disabled = true;
-      claimBonusBtn.textContent = 'AWARDING 100 BONUS POINTS... 🌟';
-
-      const participant = state.participant || JSON.parse(sessionStorage.getItem('tyeb_participant') || 'null');
-      const attempt = state.attempt || JSON.parse(sessionStorage.getItem('tyeb_attempt') || 'null');
-
-      try {
-        const res = await fetch('/api/arena/submit-level', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            participantId: participant ? participant.participantId : null,
-            attemptId: attempt ? attempt.attemptId : null,
-            levelKey: 'spinArena',
-            payload: {
-              category: 'Bonus Points'
-            }
-          })
-        });
-
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-
-        state.arena.levels.spinArena.completed = true;
-        state.arena.levels.spinArena.score = data.score || 100;
-
-        AudioFX.playCelebration();
-        launchConfetti();
-
-        if (challengeCard) challengeCard.style.display = 'none';
-        if (successCard) {
-          successCard.style.display = 'block';
-          const scoreTag = document.getElementById('l2AwardedScore');
-          if (scoreTag) scoreTag.textContent = `+${data.score || 100} Points Awarded!`;
-        }
-
-        const hudScore = document.getElementById('hudL2Score');
-        if (hudScore) hudScore.textContent = `Score: ${data.score || 100} / 100`;
-
-        updateArenaHubUI();
-        showToast('Jackpot! 100 Bonus points awarded!', 'success');
-      } catch (err) {
-        showToast(err.message, 'error');
-      } finally {
-        claimBonusBtn.disabled = false;
-        claimBonusBtn.textContent = 'CLAIM BONUS 100 POINTS 🌟';
-      }
-    });
-  }
-
-  // Submit Answer to Normal Question
-  if (submitBtn) {
-    submitBtn.addEventListener('click', async () => {
-      const selectedOption = state.arena.levels.spinArena.selectedOption;
-      const cat = state.arena.levels.spinArena.selectedCategory || 'Electrical Engineering';
-      if (!selectedOption) return;
-
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'VERIFYING ANSWER... ⏳';
-
-      const participant = state.participant || JSON.parse(sessionStorage.getItem('tyeb_participant') || 'null');
-      const attempt = state.attempt || JSON.parse(sessionStorage.getItem('tyeb_attempt') || 'null');
-
-      try {
-        const res = await fetch('/api/arena/submit-level', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            participantId: participant ? participant.participantId : null,
-            attemptId: attempt ? attempt.attemptId : null,
-            levelKey: 'spinArena',
-            payload: {
-              category: cat,
-              selectedOption: selectedOption
-            }
-          })
-        });
-
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-
-        state.arena.levels.spinArena.completed = true;
-        state.arena.levels.spinArena.score = data.score || 100;
-
-        AudioFX.playCelebration();
-        launchConfetti();
-
-        if (challengeCard) challengeCard.style.display = 'none';
-        if (successCard) {
-          successCard.style.display = 'block';
-          const scoreTag = document.getElementById('l2AwardedScore');
-          if (scoreTag) scoreTag.textContent = `+${data.score || 100} Points Awarded!`;
-        }
-
-        const hudScore = document.getElementById('hudL2Score');
-        if (hudScore) hudScore.textContent = `Score: ${data.score || 100} / 100`;
-
-        updateArenaHubUI();
-        showToast(data.message || 'Spin Arena Completed!', 'success');
-      } catch (err) {
-        showToast(err.message, 'error');
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'SUBMIT ANSWER 🏁';
-      }
-    });
-  }
 }
 
 // ----------------------------------------------------
@@ -1151,9 +1404,6 @@ function setupLevel3BuildZone() {
   const resetBtn = document.getElementById('btnResetBridge');
   const autoBuildBtn = document.getElementById('btnAutoBuildBridge');
   const hintBtn = document.getElementById('btnHintL3');
-  const questionCard = document.getElementById('buildQuestionCard');
-  const successCard = document.getElementById('l3SuccessCard');
-  const submitBtn = document.getElementById('btnSubmitL3');
   const vehicleCar = document.getElementById('vehicleCar');
   const counterEl = document.getElementById('bridgePlacedCounter');
 
@@ -1187,7 +1437,7 @@ function setupLevel3BuildZone() {
     checkBridgeCompletion();
   }
 
-  function checkBridgeCompletion() {
+  async function checkBridgeCompletion() {
     const placed = state.arena.levels.buildZone.placedComponents;
     const count = ['foundation', 'deck', 'arch'].filter(k => placed[k]).length;
 
@@ -1198,19 +1448,16 @@ function setupLevel3BuildZone() {
       AudioFX.playCelebration();
       showToast('Bridge structural integrity confirmed! Running vehicle load test...', 'success');
 
-      // Animate Vehicle Crossing
       if (vehicleCar) {
         vehicleCar.classList.remove('crossing');
-        void vehicleCar.offsetWidth; // trigger reflow
+        void vehicleCar.offsetWidth;
         vehicleCar.classList.add('crossing');
       }
 
-      setTimeout(() => {
-        renderLevel3Question();
-        if (questionCard) {
-          questionCard.style.display = 'block';
-          questionCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
+      await recordInteractiveAction('buildZone', { bridgeBuilt: true, vehiclePassed: true });
+
+      setTimeout(async () => {
+        await loadAndStartLevel('buildZone');
       }, 1800);
     }
   }
@@ -1218,7 +1465,6 @@ function setupLevel3BuildZone() {
   function resetBridge() {
     state.arena.levels.buildZone.placedComponents = {};
     state.arena.levels.buildZone.vehiclePassed = false;
-    state.arena.levels.buildZone.selectedOption = null;
 
     components.forEach(item => {
       if (item.slot) {
@@ -1237,9 +1483,12 @@ function setupLevel3BuildZone() {
 
     if (vehicleCar) vehicleCar.classList.remove('crossing');
     if (counterEl) counterEl.textContent = 'Placed: 0 / 3';
-    if (questionCard) questionCard.style.display = 'none';
+
+    const runner = document.getElementById('l3QuestionRunner');
+    if (runner) runner.style.display = 'none';
+    const successCard = document.getElementById('l3SuccessCard');
     if (successCard) successCard.style.display = 'none';
-    if (submitBtn) submitBtn.disabled = true;
+
     showToast('Bridge construction site reset.', 'info');
   }
 
@@ -1247,38 +1496,6 @@ function setupLevel3BuildZone() {
     ['foundation', 'deck', 'arch'].forEach(t => placeComponent(t));
   }
 
-  function renderLevel3Question() {
-    const grid = document.getElementById('l3OptionsGrid');
-    if (!grid) return;
-    grid.innerHTML = '';
-
-    const options = {
-      A: 'To improve structural stability',
-      B: 'To generate electricity',
-      C: 'To produce sound',
-      D: 'To measure temperature'
-    };
-
-    ['A', 'B', 'C', 'D'].forEach(letter => {
-      const card = document.createElement('div');
-      card.className = `option-card ${state.arena.levels.buildZone.selectedOption === letter ? 'selected' : ''}`;
-      card.innerHTML = `
-        <div class="option-badge">${letter}</div>
-        <div class="option-label">${options[letter]}</div>
-      `;
-
-      card.addEventListener('click', () => {
-        AudioFX.playClick();
-        state.arena.levels.buildZone.selectedOption = letter;
-        renderLevel3Question();
-        if (submitBtn) submitBtn.disabled = false;
-      });
-
-      grid.appendChild(card);
-    });
-  }
-
-  // Component click & drag handlers
   components.forEach(item => {
     if (item.el) {
       item.el.addEventListener('dragstart', (e) => {
@@ -1317,63 +1534,6 @@ function setupLevel3BuildZone() {
   if (hintBtn) {
     hintBtn.addEventListener('click', () => {
       showToast('💡 Hint: Place the Foundation Truss Pier at the bottom, Roadway Deck Span in the middle, and Suspension Arch Beam on top!', 'info');
-    });
-  }
-
-  // Submit Level 3
-  if (submitBtn) {
-    submitBtn.addEventListener('click', async () => {
-      const selectedOption = state.arena.levels.buildZone.selectedOption;
-      if (!selectedOption) return;
-
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'VALIDATING STRUCTURAL INTEGRITY... ⏳';
-
-      const participant = state.participant || JSON.parse(sessionStorage.getItem('tyeb_participant') || 'null');
-      const attempt = state.attempt || JSON.parse(sessionStorage.getItem('tyeb_attempt') || 'null');
-
-      try {
-        const res = await fetch('/api/arena/submit-level', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            participantId: participant ? participant.participantId : null,
-            attemptId: attempt ? attempt.attemptId : null,
-            levelKey: 'buildZone',
-            payload: {
-              placedComponents: state.arena.levels.buildZone.placedComponents,
-              selectedOption: selectedOption
-            }
-          })
-        });
-
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-
-        state.arena.levels.buildZone.completed = true;
-        state.arena.levels.buildZone.score = data.score || 100;
-
-        AudioFX.playCelebration();
-        launchConfetti();
-
-        if (questionCard) questionCard.style.display = 'none';
-        if (successCard) {
-          successCard.style.display = 'block';
-          const scoreTag = document.getElementById('l3AwardedScore');
-          if (scoreTag) scoreTag.textContent = `+${data.score || 100} Points Awarded!`;
-        }
-
-        const hudScore = document.getElementById('hudL3Score');
-        if (hudScore) hudScore.textContent = `Score: ${data.score || 100} / 100`;
-
-        updateArenaHubUI();
-        showToast(data.message || 'Junior Engineer Unlocked!', 'success');
-      } catch (err) {
-        showToast(err.message, 'error');
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'VERIFY & UNLOCK LEVEL 3 🌉';
-      }
     });
   }
 }
@@ -1564,31 +1724,8 @@ function setupLevel4EscapeRoom() {
         // PIN Correct! Final Unlock!
         keypadEnterBtn.disabled = true;
 
-        const participant = state.participant || JSON.parse(sessionStorage.getItem('tyeb_participant') || 'null');
-        const attempt = state.attempt || JSON.parse(sessionStorage.getItem('tyeb_attempt') || 'null');
-
         try {
-          const res = await fetch('/api/arena/submit-level', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              participantId: participant ? participant.participantId : null,
-              attemptId: attempt ? attempt.attemptId : null,
-              levelKey: 'escapeRoom',
-              payload: {
-                c1Option: 'C',
-                c2Component: 'motor',
-                c3Pin: '10'
-              }
-            })
-          });
-
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error);
-
-          state.arena.levels.escapeRoom.completed = true;
           state.arena.levels.escapeRoom.c3Solved = true;
-          state.arena.levels.escapeRoom.score = data.score || 100;
 
           // Unlock Door Visually
           if (lockPill3) {
@@ -1607,24 +1744,21 @@ function setupLevel4EscapeRoom() {
           }
 
           AudioFX.playCelebration();
-          launchConfetti();
+          showToast('Access Granted! Override successful. Now answer the Level 4 engineering questions!', 'success');
 
           if (c3Card) c3Card.style.display = 'none';
-          if (successCard) {
-            successCard.style.display = 'block';
-            const scoreTag = document.getElementById('l4AwardedScore');
-            if (scoreTag) scoreTag.textContent = `+${data.score || 100} Points Awarded!`;
-          }
+          if (stageIndicator) stageIndicator.textContent = 'Stage 4: Knowledge Override Matrix';
 
-          const hudScore = document.getElementById('hudL4Score');
-          if (hudScore) hudScore.textContent = `Score: ${data.score || 100} / 100`;
+          await recordInteractiveAction('escapeRoom', {
+            c1Solved: true,
+            c2Solved: true,
+            c3Solved: true,
+            pinEntered: '10'
+          });
 
-          if (stageIndicator) stageIndicator.textContent = 'Laboratory Access Granted';
-
-          updateArenaHubUI();
-          showToast(data.message || 'Engineering Escape Master Unlocked!', 'success');
+          await loadAndStartLevel('escapeRoom');
         } catch (err) {
-          showToast(err.message, 'error');
+          showToast(err.message || 'Error unlocking Level 4 challenges', 'error');
         } finally {
           keypadEnterBtn.disabled = false;
         }
@@ -1645,17 +1779,15 @@ function setupLevel4EscapeRoom() {
 // FINISH ENGINEERING ARENA & SUBMIT RESULTS
 // ----------------------------------------------------
 async function finishEngineeringArena() {
+  await refreshArenaStatus();
   const levels = state.arena.levels;
-  const completedCount = ['circuitMaster', 'spinArena', 'buildZone', 'escapeRoom'].filter(k => levels[k]?.completed).length;
-
-  if (completedCount === 0) {
-    showToast('Please play and complete at least one Engineering Arena level before submitting!', 'warning');
-    return;
-  }
+  const completedCount = ['circuitMaster', 'spinArena', 'buildZone', 'escapeRoom'].filter(k => levels[k]?.completed || levels[k]?.status === 'Completed').length;
 
   if (completedCount < 4) {
-    const proceed = confirm(`You have completed ${completedCount} of 4 challenges (${state.arena.totalScore} / 400 points).\n\nIf you submit now, your certificate will reflect this score.\n\nClick OK to finish now, or Cancel to return and complete all 4 challenges for the Champion distinction!`);
-    if (!proceed) return;
+    AudioFX.playClick();
+    showToast(`⚠️ All 4 Engineering Arena levels must be completed before claiming your certificate! Current progress: ${completedCount} / 4 levels.`, 'warning');
+    alert(`⚠️ Incomplete Engineering Arena Progress!\n\nYou must complete all 4 levels in sequence to be eligible for your Certificate of Excellence:\n\n• Level 1: Circuit Master ${levels.circuitMaster?.completed ? '✅' : '⏳'}\n• Level 2: Spin Arena ${levels.spinArena?.completed ? '✅' : '⏳'}\n• Level 3: Build Zone ${levels.buildZone?.completed ? '✅' : '⏳'}\n• Level 4: Escape Room ${levels.escapeRoom?.completed ? '✅' : '⏳'}\n\nCurrent progress: ${completedCount} / 4 levels completed.`);
+    return;
   }
 
   showToast('Generating official Engineering Arena E-Certificate...', 'info');
